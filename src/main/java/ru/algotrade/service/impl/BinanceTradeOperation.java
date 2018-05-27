@@ -7,7 +7,7 @@ import com.binance.api.client.domain.market.BookTicker;
 import com.binance.api.client.domain.market.TickerPrice;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import ru.algotrade.mapping.binance.TradePairBinanceMapper;
+import ru.algotrade.mapping.TradePairBinanceMapper;
 import ru.algotrade.model.TradePair;
 import ru.algotrade.service.TradeOperation;
 

@@ -15,6 +15,6 @@ public class ExchangeServiceImpl implements ExchangeService {
     @Override
     public void startTrade() {
         TradePair tradePair = tradeOperation.getTradePairInfo("BTCUSDT");
-        System.out.println(tradePair.getAskPrice());
+        System.out.println(tradePair.getTradeLimits().getMinQty());
     }
 }

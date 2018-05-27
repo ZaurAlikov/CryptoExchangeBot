@@ -5,23 +5,23 @@ import java.math.BigDecimal;
 public class TradeLimits {
 
     private String symbol;
-    private String minPrice;
-    private String maxPrice;
-    private String tickSize;
-    private String minQty;
-    private String maxQty;
-    private String stepSize;
-    private String minNotional;
+    private BigDecimal minPrice;
+    private BigDecimal maxPrice;
+    private BigDecimal tickSize;
+    private BigDecimal minQty;
+    private BigDecimal maxQty;
+    private BigDecimal stepSize;
+    private BigDecimal minNotional;
 
     public TradeLimits(String symbol, String minPrice, String maxPrice, String tickSize, String minQty, String maxQty, String stepSize, String minNotional) {
         this.symbol = symbol;
-        this.minPrice = minPrice;
-        this.maxPrice = maxPrice;
-        this.tickSize = tickSize;
-        this.minQty = minQty;
-        this.maxQty = maxQty;
-        this.stepSize = stepSize;
-        this.minNotional = minNotional;
+        this.minPrice = new BigDecimal(minPrice);
+        this.maxPrice = new BigDecimal(maxPrice);
+        this.tickSize = new BigDecimal(tickSize);
+        this.minQty = new BigDecimal(minQty);
+        this.maxQty = new BigDecimal(maxQty);
+        this.stepSize = new BigDecimal(stepSize);
+        this.minNotional = new BigDecimal(minNotional);
     }
 
     public TradeLimits(){
@@ -36,63 +36,59 @@ public class TradeLimits {
         this.symbol = symbol;
     }
 
-    public String getMinPrice() {
+    public BigDecimal getMinPrice() {
         return minPrice;
     }
 
-    public void setMinPrice(String minPrice) {
+    public void setMinPrice(BigDecimal minPrice) {
         this.minPrice = minPrice;
     }
 
-    public String getMaxPrice() {
+    public BigDecimal getMaxPrice() {
         return maxPrice;
     }
 
-    public void setMaxPrice(String maxPrice) {
+    public void setMaxPrice(BigDecimal maxPrice) {
         this.maxPrice = maxPrice;
     }
 
-    public String getTickSize() {
+    public BigDecimal getTickSize() {
         return tickSize;
     }
 
-    public void setTickSize(String tickSize) {
+    public void setTickSize(BigDecimal tickSize) {
         this.tickSize = tickSize;
     }
 
-    public String getMinQty() {
+    public BigDecimal getMinQty() {
         return minQty;
     }
 
-    public void setMinQty(String minQty) {
+    public void setMinQty(BigDecimal minQty) {
         this.minQty = minQty;
     }
 
-    public String getMaxQty() {
+    public BigDecimal getMaxQty() {
         return maxQty;
     }
 
-    public void setMaxQty(String maxQty) {
+    public void setMaxQty(BigDecimal maxQty) {
         this.maxQty = maxQty;
     }
 
-    public String getStepSize() {
+    public BigDecimal getStepSize() {
         return stepSize;
     }
 
-    public void setStepSize(String stepSize) {
+    public void setStepSize(BigDecimal stepSize) {
         this.stepSize = stepSize;
     }
 
-    public String getMinNotional() {
+    public BigDecimal getMinNotional() {
         return minNotional;
     }
 
-    public void setMinNotional(String minNotional) {
+    public void setMinNotional(BigDecimal minNotional) {
         this.minNotional = minNotional;
-    }
-
-    public BigDecimal getMinPriceBigDec(){
-        return new BigDecimal(minPrice);
     }
 }

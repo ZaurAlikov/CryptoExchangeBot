@@ -1,4 +1,4 @@
-package ru.algotrade.mapping.binance;
+package ru.algotrade.mapping;
 
 import com.binance.api.client.domain.general.SymbolInfo;
 import com.binance.api.client.domain.market.BookTicker;
@@ -19,7 +19,6 @@ public interface TradePairBinanceMapper {
             @Mapping(target = "bidPrice", source = "bookTicker.bidPrice"),
             @Mapping(target = "bidQty", source = "bookTicker.bidQty"),
             @Mapping(target = "marketPrice", source = "tickerPrice.price"),
-//            @Mapping(target = "tradeLimits", source = "toTradeLimits")
             @Mapping(target = "tradeLimits", expression = "java(new ru.algotrade.model.TradeLimits(" +
                     "symbolInfo.getSymbol()," +
                     "symbolInfo.getFilters().get(0).getMinPrice()," +
@@ -31,16 +30,4 @@ public interface TradePairBinanceMapper {
                     "symbolInfo.getFilters().get(2).getMinNotional()))")
     })
     TradePair toTradePair(SymbolInfo symbolInfo, TickerPrice tickerPrice, BookTicker bookTicker);
-
-//    @Mappings({
-//            @Mapping(target = "symbol", source = "symbolInfo.symbol"),
-//            @Mapping(target = "minPrice", source = "symbolInfo.getFilters().get(0).minPrice"),
-//            @Mapping(target = "maxPrice", source = "symbolInfo.getFilters().get(0).maxPrice"),
-//            @Mapping(target = "tickSize", source = "symbolInfo.getFilters().get(0).tickSize"),
-//            @Mapping(target = "minQty", source = "symbolInfo.getFilters().get(1).minQty"),
-//            @Mapping(target = "maxQty", source = "symbolInfo.getFilters().get(1).maxQty"),
-//            @Mapping(target = "stepSize", source = "symbolInfo.getFilters().get(1).stepSize"),
-//            @Mapping(target = "minNotional", source = "symbolInfo.getFilters().get(2).minNotional"),
-//    })
-//    TradeLimits toTradeLimits(SymbolInfo symbolInfo);
 }
