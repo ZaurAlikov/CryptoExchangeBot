@@ -5,7 +5,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
 import ru.algotrade.mapping.TradePairBinanceMapper;
-import ru.algotrade.mapping.binance.TradePairBinanceMapperImpl;
+import ru.algotrade.mapping.TradePairBinanceMapperImpl;
 import ru.algotrade.service.ExchangeService;
 import ru.algotrade.service.TradeOperation;
 import ru.algotrade.service.impl.BinanceTradeOperation;

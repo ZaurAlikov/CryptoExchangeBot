@@ -16,5 +16,6 @@ public interface TradeOperation {
     BigDecimal getProfit();
     TradePair getTradePairInfo(String pair);
     List<String> getAllPair();
+    List<String> getAllCoins();
     Map<String, BigDecimal> getAllPrices();
 }

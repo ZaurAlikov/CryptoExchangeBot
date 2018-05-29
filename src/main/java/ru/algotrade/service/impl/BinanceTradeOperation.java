@@ -12,8 +12,10 @@ import ru.algotrade.model.TradePair;
 import ru.algotrade.service.TradeOperation;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 @Service
 public class BinanceTradeOperation implements TradeOperation {
@@ -63,11 +65,35 @@ public class BinanceTradeOperation implements TradeOperation {
 
     @Override
     public List<String> getAllPair() {
-        return null;
+        List<String> allPairs = new ArrayList<>();
+        for (SymbolInfo symbolInfo : apiRestClient.getExchangeInfo().getSymbols()){
+            allPairs.add(symbolInfo.getSymbol());
+        }
+        return allPairs;
+    }
+
+    @Override
+    public List<String> getAllCoins() {
+        List<String> allCoins = new ArrayList<>();
+        String baseAsset;
+        String quoteAsset;
+        for (SymbolInfo symbolInfo : apiRestClient.getExchangeInfo().getSymbols()){
+            baseAsset = symbolInfo.getBaseAsset();
+            quoteAsset = symbolInfo.getQuoteAsset();
+            if (!allCoins.contains(baseAsset)) allCoins.add(baseAsset);
+            if (!allCoins.contains(quoteAsset)) allCoins.add(quoteAsset);
+        }
+        return allCoins;
     }
 
     @Override
     public Map<String, BigDecimal> getAllPrices() {
-        return null;
+        Map<String, BigDecimal> allPrices = new TreeMap<>();
+        for (TickerPrice tickerPrice : apiRestClient.getAllPrices()){
+            allPrices.put(tickerPrice.getSymbol(), new BigDecimal(tickerPrice.getPrice()));
+        }
+        return allPrices;
     }
+
+
 }
