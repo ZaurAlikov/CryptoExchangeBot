@@ -13,6 +13,7 @@ import ru.algotrade.service.TradeOperation;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class BinanceTradeOperation implements TradeOperation {
@@ -58,5 +59,15 @@ public class BinanceTradeOperation implements TradeOperation {
         List<BookTicker> bookTickers = apiRestClient.getBookTickers();
         BookTicker tradeBook = bookTickers.stream().filter(s -> s.getSymbol().equals(pair)).findFirst().get();
         return tradePairBinanceMapper.toTradePair(symbolInfo, tickerPrice, tradeBook);
+    }
+
+    @Override
+    public List<String> getAllPair() {
+        return null;
+    }
+
+    @Override
+    public Map<String, BigDecimal> getAllPrices() {
+        return null;
     }
 }

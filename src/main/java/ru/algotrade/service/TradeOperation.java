@@ -3,6 +3,8 @@ package ru.algotrade.service;
 import ru.algotrade.model.TradePair;
 
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
 
 public interface TradeOperation {
     //TODO Решить что будут возвращать торговые методы
@@ -13,4 +15,6 @@ public interface TradeOperation {
 
     BigDecimal getProfit();
     TradePair getTradePairInfo(String pair);
+    List<String> getAllPair();
+    Map<String, BigDecimal> getAllPrices();
 }
