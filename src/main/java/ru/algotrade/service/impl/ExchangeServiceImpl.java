@@ -24,34 +24,36 @@ public class ExchangeServiceImpl implements ExchangeService {
 
     @Override
     public void startTrade() {
+        String mainCur = "USDT";
         logger.debug("CryptoExchangeBot started...");
         TradePair tradePair = tradeOperation.getTradePairInfo("ADABNB");
         System.out.println(tradePair.getTradeLimits().getMinQty());
         List<String> allPairs = tradeOperation.getAllPair();
         List<String> allCoins = tradeOperation.getAllCoins();
         Map<String, BigDecimal> allPrices = tradeOperation.getAllPrices();
-        List<PairTriangle> triangles = getAllTriangles(allPairs, "USDT");
+        List<PairTriangle> triangles = getAllTriangles(allPairs, mainCur);
+        newMarketOrder("ADABNB", "ADABNB".replace(mainCur,""), BigDecimal.TEN);
         System.out.println(allPairs.get(0));
     }
 
     @Override
-    public List<PairTriangle> getAllTriangles(List<String> Pairs, String mainCur){
-        List<String> firstPairs = new ArrayList<>();
-        List<String> coins = new ArrayList<>();
-        for (String pair : Pairs){
-            if(pair.contains(mainCur)){
-                firstPairs.add(pair);
-                coins.add(pair.replace(mainCur,""));
-            }
-        }
-        List<String> secondPairs  = new ArrayList<>();
-        for (String coin : coins){
-            for (String coin2 : coins){
-                if(!coin.equals(coin2)){
-                    secondPairs.add(coin.concat(coin2));
+        public List<PairTriangle> getAllTriangles(List<String> Pairs, String mainCur){
+            List<String> firstPairs = new ArrayList<>();
+            List<String> coins = new ArrayList<>();
+            for (String pair : Pairs){
+                if(pair.contains(mainCur)){
+                    firstPairs.add(pair);
+                    coins.add(pair.replace(mainCur,""));
                 }
             }
-        }
+            List<String> secondPairs  = new ArrayList<>();
+            for (String coin : coins){
+                for (String coin2 : coins){
+                    if(!coin.equals(coin2)){
+                        secondPairs.add(coin.concat(coin2));
+                    }
+                }
+            }
         secondPairs.removeIf(s -> !Pairs.contains(s));
         PairTriangle triangle;
         List<PairTriangle> triangles = new ArrayList<>();
@@ -72,16 +74,15 @@ public class ExchangeServiceImpl implements ExchangeService {
         return triangles;
     }
 
-    void newMarketOrder(String pair, String coin, BigDecimal qty){
-        if(isBaseCurrency(pair, coin)){
-
-        }
-
-        tradeOperation.marketBuy(pair, qty.toString());
-        tradeOperation.marketSell(pair, qty.toString());
+    void newMarketOrder(String pair, String buyCoin, BigDecimal qty){
+        if(pair.contains(buyCoin)){
+            if (isBaseCurrency(pair, buyCoin)) {
+                tradeOperation.marketBuy(pair, qty.toString());
+            } else tradeOperation.marketSell(pair, qty.toString());
+        } else logger.debug("Pair don`t contain buyCoin");
     }
 
-    boolean isBaseCurrency(String pair, String coin){
+    private boolean isBaseCurrency(String pair, String coin){
         return pair.startsWith(coin);
     }
 

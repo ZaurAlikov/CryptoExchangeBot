@@ -5,6 +5,8 @@ import com.binance.api.client.BinanceApiRestClient;
 import com.binance.api.client.domain.general.SymbolInfo;
 import com.binance.api.client.domain.market.BookTicker;
 import com.binance.api.client.domain.market.TickerPrice;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import ru.algotrade.mapping.TradePairBinanceMapper;
@@ -23,6 +25,7 @@ public class BinanceTradeOperation implements TradeOperation {
     @Autowired
     private TradePairBinanceMapper tradePairBinanceMapper;
     private BinanceApiRestClient apiRestClient;
+    Logger logger = LoggerFactory.getLogger(BinanceTradeOperation.class);
 
     public BinanceTradeOperation(String apiKey, String secretKey){
         BinanceApiClientFactory factory = BinanceApiClientFactory.newInstance(apiKey, secretKey);
@@ -41,12 +44,12 @@ public class BinanceTradeOperation implements TradeOperation {
 
     @Override
     public void marketBuy(String pair, String qty) {
-
+        logger.debug("Buy at market price");
     }
 
     @Override
     public void marketSell(String pair, String qty) {
-
+        logger.debug("Sell at market price");
     }
 
     @Override
