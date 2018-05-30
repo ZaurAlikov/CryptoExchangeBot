@@ -68,7 +68,21 @@ public class ExchangeServiceImpl implements ExchangeService {
                 }
             }
         }
+        logger.debug("Created " + triangles.size() + " triangles");
         return triangles;
+    }
+
+    void newMarketOrder(String pair, String coin, BigDecimal qty){
+        if(isBaseCurrency(pair, coin)){
+
+        }
+
+        tradeOperation.marketBuy(pair, qty.toString());
+        tradeOperation.marketSell(pair, qty.toString());
+    }
+
+    boolean isBaseCurrency(String pair, String coin){
+        return pair.startsWith(coin);
     }
 
 }
