@@ -54,12 +54,12 @@ public class BinanceTradeOperation implements TradeOperation {
     }
 
     @Override
-    public BigDecimal getQtyForBuy(BigDecimal amt, String pair) {
+    public String getQtyForBuy(String pair, BigDecimal amt) {
         return null;
     }
 
     @Override
-    public BigDecimal getQtyForSell(BigDecimal amt, String pair) {
+    public String getQtyForSell(String pair, BigDecimal amt) {
         return null;
     }
 

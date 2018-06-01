@@ -17,9 +17,9 @@ public interface TradeOperation {
 
     BigDecimal marketSell(String pair, String qty);
 
-    BigDecimal getQtyForBuy(BigDecimal amt, String pair);
+    String getQtyForBuy(String pair, BigDecimal amt);
 
-    BigDecimal getQtyForSell(BigDecimal amt, String pair);
+    String getQtyForSell(String pair, BigDecimal amt);
 
     TradePair getTradePairInfo(String pair);
 

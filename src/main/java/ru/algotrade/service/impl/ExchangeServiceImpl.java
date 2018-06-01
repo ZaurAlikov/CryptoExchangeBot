@@ -84,19 +84,19 @@ public class ExchangeServiceImpl implements ExchangeService {
     @Override
     public void trade(PairTriangle triangle, BigDecimal initAmt, String mainCur){
         BigDecimal resultAmt;
-        String buyCurrency;
+        String requiredCurrency;
         String firstPair = triangle.getFirstPair();
         String secondPair = triangle.getSecondPair();
         String thirdPair = triangle.getThirdPair();
 
-        buyCurrency = firstPair.replace(mainCur, "");
-        resultAmt = newMarketOrder(firstPair, buyCurrency, initAmt);
+        requiredCurrency = getRequiredCurrency(firstPair, mainCur);
+        resultAmt = newMarketOrder(firstPair, requiredCurrency, initAmt);
 
-        buyCurrency = secondPair.replace(buyCurrency, "");
-        resultAmt = newMarketOrder(secondPair, buyCurrency, resultAmt);
+        requiredCurrency = getRequiredCurrency(secondPair, requiredCurrency);
+        resultAmt = newMarketOrder(secondPair, requiredCurrency, resultAmt);
 
-        buyCurrency = thirdPair.replace(buyCurrency, "");
-        resultAmt = newMarketOrder(thirdPair, buyCurrency, resultAmt);
+        requiredCurrency = getRequiredCurrency(thirdPair, requiredCurrency);
+        resultAmt = newMarketOrder(thirdPair, requiredCurrency, resultAmt);
 
         logger.debug("Trade result = " + resultAmt + " " + mainCur);
     }
@@ -107,12 +107,15 @@ public class ExchangeServiceImpl implements ExchangeService {
     }
 
     private BigDecimal newMarketOrder(String pair, String buyCoin, BigDecimal qty){
+        String normalQty;
         BigDecimal resultAmt = BigDecimal.ZERO;
         if(pair.contains(buyCoin)){
             if (isBaseCurrency(pair, buyCoin)) {
-                resultAmt = tradeOperation.marketBuy(pair, qty.toString());
+                normalQty = tradeOperation.getQtyForBuy(pair, qty);
+                resultAmt = tradeOperation.marketBuy(pair, normalQty);
             } else {
-                resultAmt = tradeOperation.marketSell(pair, qty.toString());
+                normalQty = tradeOperation.getQtyForSell(pair, qty);
+                resultAmt = tradeOperation.marketSell(pair, normalQty);
             }
         } else logger.debug("Pair don`t contain buyCoin");
         return  resultAmt;
@@ -120,6 +123,10 @@ public class ExchangeServiceImpl implements ExchangeService {
 
     private boolean isBaseCurrency(String pair, String coin){
         return pair.startsWith(coin);
+    }
+
+    private String getRequiredCurrency(String pair, String availableCurrency ){
+        return pair.replace(availableCurrency, "");
     }
 
     @Autowired
