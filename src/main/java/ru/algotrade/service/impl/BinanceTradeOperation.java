@@ -22,10 +22,9 @@ import java.util.TreeMap;
 @Service
 public class BinanceTradeOperation implements TradeOperation {
 
-    @Autowired
     private TradePairBinanceMapper tradePairBinanceMapper;
     private BinanceApiRestClient apiRestClient;
-    Logger logger = LoggerFactory.getLogger(BinanceTradeOperation.class);
+    private Logger logger = LoggerFactory.getLogger(BinanceTradeOperation.class);
 
     public BinanceTradeOperation(String apiKey, String secretKey){
         BinanceApiClientFactory factory = BinanceApiClientFactory.newInstance(apiKey, secretKey);
@@ -33,27 +32,34 @@ public class BinanceTradeOperation implements TradeOperation {
     }
 
     @Override
-    public void buy(String pair, String price, String qty) {
-
+    public BigDecimal buy(String pair, String price, String qty) {
+        return BigDecimal.ZERO;
     }
 
     @Override
-    public void sell(String pair, String price, String qty) {
-
+    public BigDecimal sell(String pair, String price, String qty) {
+        return BigDecimal.ZERO;
     }
 
     @Override
-    public void marketBuy(String pair, String qty) {
+    public BigDecimal marketBuy(String pair, String qty) {
         logger.debug("Buy at market price");
+        return BigDecimal.ZERO;
     }
 
     @Override
-    public void marketSell(String pair, String qty) {
+    public BigDecimal marketSell(String pair, String qty) {
         logger.debug("Sell at market price");
+        return BigDecimal.ZERO;
     }
 
     @Override
-    public BigDecimal getProfit() {
+    public BigDecimal getQtyForBuy(BigDecimal amt, String pair) {
+        return null;
+    }
+
+    @Override
+    public BigDecimal getQtyForSell(BigDecimal amt, String pair) {
         return null;
     }
 
@@ -98,5 +104,8 @@ public class BinanceTradeOperation implements TradeOperation {
         return allPrices;
     }
 
-
+    @Autowired
+    public void setTradePairBinanceMapper(TradePairBinanceMapper tradePairBinanceMapper) {
+        this.tradePairBinanceMapper = tradePairBinanceMapper;
+    }
 }

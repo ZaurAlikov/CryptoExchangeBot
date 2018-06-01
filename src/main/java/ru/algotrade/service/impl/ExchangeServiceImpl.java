@@ -3,57 +3,64 @@ package ru.algotrade.service.impl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.PropertySource;
 import org.springframework.stereotype.Service;
 import ru.algotrade.model.PairTriangle;
-import ru.algotrade.model.TradePair;
 import ru.algotrade.service.ExchangeService;
 import ru.algotrade.service.TradeOperation;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.ListIterator;
-import java.util.Map;
 
 @Service
+@PropertySource("classpath:settings.properties")
 public class ExchangeServiceImpl implements ExchangeService {
 
-    @Autowired
-    TradeOperation tradeOperation;
-    Logger logger = LoggerFactory.getLogger(ExchangeServiceImpl.class);
+    @Value("${main_currency}")
+    private String mainCur;
+    private TradeOperation tradeOperation;
+    private Logger logger = LoggerFactory.getLogger(ExchangeServiceImpl.class);
 
     @Override
     public void startTrade() {
-        String mainCur = "USDT";
-        logger.debug("CryptoExchangeBot started...");
-        TradePair tradePair = tradeOperation.getTradePairInfo("ADABNB");
-        System.out.println(tradePair.getTradeLimits().getMinQty());
+        BigDecimal initAmt = new BigDecimal("15");
+        BigDecimal bound = new BigDecimal("0.01");
         List<String> allPairs = tradeOperation.getAllPair();
-        List<String> allCoins = tradeOperation.getAllCoins();
-        Map<String, BigDecimal> allPrices = tradeOperation.getAllPrices();
         List<PairTriangle> triangles = getAllTriangles(allPairs, mainCur);
-        newMarketOrder("ADABNB", "ADABNB".replace(mainCur,""), BigDecimal.TEN);
-        System.out.println(allPairs.get(0));
+        for(PairTriangle triangle : triangles){
+            if(isProfit(triangle, initAmt, bound)){
+                trade(triangle, initAmt, mainCur);
+            }
+        }
+//        logger.debug("CryptoExchangeBot started...");
+//        TradePair tradePair = tradeOperation.getTradePairInfo("ADABNB");
+//        System.out.println(tradePair.getTradeLimits().getMinQty());
+//        List<String> allCoins = tradeOperation.getAllCoins();
+//        Map<String, BigDecimal> allPrices = tradeOperation.getAllPrices();
+//        newMarketOrder(tradePair.getSymbol(), tradePair.getSymbol().replace(mainCur,""), BigDecimal.TEN);
+//        System.out.println(allPairs.get(0));
     }
 
     @Override
-        public List<PairTriangle> getAllTriangles(List<String> Pairs, String mainCur){
-            List<String> firstPairs = new ArrayList<>();
-            List<String> coins = new ArrayList<>();
-            for (String pair : Pairs){
-                if(pair.contains(mainCur)){
-                    firstPairs.add(pair);
-                    coins.add(pair.replace(mainCur,""));
+    public List<PairTriangle> getAllTriangles(List<String> Pairs, String mainCur){
+        List<String> firstPairs = new ArrayList<>();
+        List<String> coins = new ArrayList<>();
+        for (String pair : Pairs){
+            if(pair.contains(mainCur)){
+                firstPairs.add(pair);
+                coins.add(pair.replace(mainCur,""));
+            }
+        }
+        List<String> secondPairs  = new ArrayList<>();
+        for (String coin : coins){
+            for (String coin2 : coins){
+                if(!coin.equals(coin2)){
+                    secondPairs.add(coin.concat(coin2));
                 }
             }
-            List<String> secondPairs  = new ArrayList<>();
-            for (String coin : coins){
-                for (String coin2 : coins){
-                    if(!coin.equals(coin2)){
-                        secondPairs.add(coin.concat(coin2));
-                    }
-                }
-            }
+        }
         secondPairs.removeIf(s -> !Pairs.contains(s));
         PairTriangle triangle;
         List<PairTriangle> triangles = new ArrayList<>();
@@ -74,16 +81,49 @@ public class ExchangeServiceImpl implements ExchangeService {
         return triangles;
     }
 
-    void newMarketOrder(String pair, String buyCoin, BigDecimal qty){
+    @Override
+    public void trade(PairTriangle triangle, BigDecimal initAmt, String mainCur){
+        BigDecimal resultAmt;
+        String buyCurrency;
+        String firstPair = triangle.getFirstPair();
+        String secondPair = triangle.getSecondPair();
+        String thirdPair = triangle.getThirdPair();
+
+        buyCurrency = firstPair.replace(mainCur, "");
+        resultAmt = newMarketOrder(firstPair, buyCurrency, initAmt);
+
+        buyCurrency = secondPair.replace(buyCurrency, "");
+        resultAmt = newMarketOrder(secondPair, buyCurrency, resultAmt);
+
+        buyCurrency = thirdPair.replace(buyCurrency, "");
+        resultAmt = newMarketOrder(thirdPair, buyCurrency, resultAmt);
+
+        logger.debug("Trade result = " + resultAmt + " " + mainCur);
+    }
+
+    @Override
+    public boolean isProfit(PairTriangle triangle, BigDecimal initAmt, BigDecimal bound) {
+        return true;
+    }
+
+    private BigDecimal newMarketOrder(String pair, String buyCoin, BigDecimal qty){
+        BigDecimal resultAmt = BigDecimal.ZERO;
         if(pair.contains(buyCoin)){
             if (isBaseCurrency(pair, buyCoin)) {
-                tradeOperation.marketBuy(pair, qty.toString());
-            } else tradeOperation.marketSell(pair, qty.toString());
+                resultAmt = tradeOperation.marketBuy(pair, qty.toString());
+            } else {
+                resultAmt = tradeOperation.marketSell(pair, qty.toString());
+            }
         } else logger.debug("Pair don`t contain buyCoin");
+        return  resultAmt;
     }
 
     private boolean isBaseCurrency(String pair, String coin){
         return pair.startsWith(coin);
     }
 
+    @Autowired
+    public void setTradeOperation(TradeOperation tradeOperation) {
+        this.tradeOperation = tradeOperation;
+    }
 }
