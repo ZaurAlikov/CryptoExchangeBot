@@ -2,6 +2,9 @@ package ru.algotrade.service.impl;
 
 import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiRestClient;
+import com.binance.api.client.domain.account.NewOrder;
+import com.binance.api.client.domain.account.NewOrderResponse;
+import com.binance.api.client.domain.account.Trade;
 import com.binance.api.client.domain.general.SymbolInfo;
 import com.binance.api.client.domain.market.BookTicker;
 import com.binance.api.client.domain.market.TickerPrice;
@@ -18,6 +21,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+
+import  static ru.algotrade.util.CalcUtils.*;
 
 @Service
 public class BinanceTradeOperation implements TradeOperation {
@@ -43,13 +48,31 @@ public class BinanceTradeOperation implements TradeOperation {
 
     @Override
     public BigDecimal marketBuy(String pair, String qty) {
-        logger.debug("Buy at market price");
+        NewOrderResponse orderResponse = apiRestClient.newOrder(NewOrder.marketBuy(pair, qty));
+        List<Trade> tradeList = apiRestClient.getMyTrades(pair, 1);
+        if (tradeList.size() > 0) {
+            Trade trade = tradeList.get(0);
+            if (trade.getOrderId().equals(orderResponse.getOrderId().toString())) {
+                logger.debug("Buy " + pair + " - price: " + trade.getPrice() + ", qty: " + trade.getQty());
+                return new BigDecimal(orderResponse.getExecutedQty());
+            } else return BigDecimal.ZERO;
+        }
+        logger.debug("Unsuccessful buy");
         return BigDecimal.ZERO;
     }
 
     @Override
     public BigDecimal marketSell(String pair, String qty) {
-        logger.debug("Sell at market price");
+        NewOrderResponse orderResponse = apiRestClient.newOrder(NewOrder.marketSell(pair, qty));
+        List<Trade> tradeList = apiRestClient.getMyTrades(pair, 1);
+        if (tradeList.size() > 0) {
+            Trade trade = tradeList.get(0);
+            if (trade.getOrderId().equals(orderResponse.getOrderId().toString())) {
+                logger.debug("Sell " + pair + " - price: " + trade.getPrice() + ", qty: " + trade.getQty() + ", total: " + multiply(trade.getPrice(), trade.getQty()));
+                return multiply(trade.getPrice(), trade.getQty());
+            } else return BigDecimal.ZERO;
+        }
+        logger.debug("Unsuccessful sell");
         return BigDecimal.ZERO;
     }
 
