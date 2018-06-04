@@ -21,6 +21,7 @@ public interface TradePairBinanceMapper {
             @Mapping(target = "marketPrice", source = "tickerPrice.price"),
             @Mapping(target = "tradeLimits", expression = "java(new ru.algotrade.model.TradeLimits(" +
                     "symbolInfo.getSymbol()," +
+                    "symbolInfo.getStatus().name()," +
                     "symbolInfo.getFilters().get(0).getMinPrice()," +
                     "symbolInfo.getFilters().get(0).getMaxPrice()," +
                     "symbolInfo.getFilters().get(0).getTickSize()," +

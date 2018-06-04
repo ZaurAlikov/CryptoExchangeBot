@@ -5,6 +5,7 @@ import java.math.BigDecimal;
 public class TradeLimits {
 
     private String symbol;
+    private String status;
     private BigDecimal minPrice;
     private BigDecimal maxPrice;
     private BigDecimal tickSize;
@@ -13,8 +14,9 @@ public class TradeLimits {
     private BigDecimal stepSize;
     private BigDecimal minNotional;
 
-    public TradeLimits(String symbol, String minPrice, String maxPrice, String tickSize, String minQty, String maxQty, String stepSize, String minNotional) {
+    public TradeLimits(String symbol, String status, String minPrice, String maxPrice, String tickSize, String minQty, String maxQty, String stepSize, String minNotional) {
         this.symbol = symbol;
+        this.status = status;
         this.minPrice = new BigDecimal(minPrice);
         this.maxPrice = new BigDecimal(maxPrice);
         this.tickSize = new BigDecimal(tickSize);
@@ -34,6 +36,14 @@ public class TradeLimits {
 
     public void setSymbol(String symbol) {
         this.symbol = symbol;
+    }
+
+    public String isStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 
     public BigDecimal getMinPrice() {

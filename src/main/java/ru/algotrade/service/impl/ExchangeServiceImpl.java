@@ -88,17 +88,15 @@ public class ExchangeServiceImpl implements ExchangeService {
         String firstPair = triangle.getFirstPair();
         String secondPair = triangle.getSecondPair();
         String thirdPair = triangle.getThirdPair();
-
-        requiredCurrency = getRequiredCurrency(firstPair, mainCur);
-        resultAmt = newMarketOrder(firstPair, requiredCurrency, initAmt);
-
-        requiredCurrency = getRequiredCurrency(secondPair, requiredCurrency);
-        resultAmt = newMarketOrder(secondPair, requiredCurrency, resultAmt);
-
-        requiredCurrency = getRequiredCurrency(thirdPair, requiredCurrency);
-        resultAmt = newMarketOrder(thirdPair, requiredCurrency, resultAmt);
-
-        logger.debug("Trade result = " + resultAmt + " " + mainCur);
+        if(tradeOperation.isAllPairTrading(triangle)){
+            requiredCurrency = getRequiredCurrency(firstPair, mainCur);
+            resultAmt = newMarketOrder(firstPair, requiredCurrency, initAmt);
+            requiredCurrency = getRequiredCurrency(secondPair, requiredCurrency);
+            resultAmt = newMarketOrder(secondPair, requiredCurrency, resultAmt);
+            requiredCurrency = getRequiredCurrency(thirdPair, requiredCurrency);
+            resultAmt = newMarketOrder(thirdPair, requiredCurrency, resultAmt);
+            logger.debug("Trade result = " + resultAmt + " " + mainCur);
+        } else logger.debug("Trade in one or more pairs is not allowed");
     }
 
     @Override
@@ -112,10 +110,10 @@ public class ExchangeServiceImpl implements ExchangeService {
         if(pair.contains(buyCoin)){
             if (isBaseCurrency(pair, buyCoin)) {
                 normalQty = tradeOperation.getQtyForBuy(pair, qty);
-                resultAmt = tradeOperation.marketBuy(pair, normalQty);
+                if(normalQty != null) resultAmt = tradeOperation.marketBuy(pair, normalQty);
             } else {
                 normalQty = tradeOperation.getQtyForSell(pair, qty);
-                resultAmt = tradeOperation.marketSell(pair, normalQty);
+                if(normalQty != null) resultAmt = tradeOperation.marketSell(pair, normalQty);
             }
         } else logger.debug("Pair don`t contain buyCoin");
         return  resultAmt;

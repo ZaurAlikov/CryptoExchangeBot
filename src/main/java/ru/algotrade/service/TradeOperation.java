@@ -21,6 +21,8 @@ public interface TradeOperation {
 
     String getQtyForSell(String pair, BigDecimal amt);
 
+    boolean isAllPairTrading(PairTriangle triangle);
+
     TradePair getTradePairInfo(String pair);
 
     List<String> getAllPair();

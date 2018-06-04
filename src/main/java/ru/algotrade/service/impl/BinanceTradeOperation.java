@@ -6,6 +6,7 @@ import com.binance.api.client.domain.account.NewOrder;
 import com.binance.api.client.domain.account.NewOrderResponse;
 import com.binance.api.client.domain.account.Trade;
 import com.binance.api.client.domain.general.SymbolInfo;
+import com.binance.api.client.domain.general.SymbolStatus;
 import com.binance.api.client.domain.market.BookTicker;
 import com.binance.api.client.domain.market.TickerPrice;
 import org.slf4j.Logger;
@@ -13,10 +14,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import ru.algotrade.mapping.TradePairBinanceMapper;
+import ru.algotrade.model.PairTriangle;
 import ru.algotrade.model.TradePair;
 import ru.algotrade.service.TradeOperation;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -78,12 +81,23 @@ public class BinanceTradeOperation implements TradeOperation {
 
     @Override
     public String getQtyForBuy(String pair, BigDecimal amt) {
-        return null;
+        BigDecimal normalQty = normalizeQuantity(pair, divide(amt, getTradePairInfo(pair).getAskPrice()));
+        //TODO Необходимо как-то избавиться от этой проверки
+        if(pair.equals("QTUMUSDT")) normalQty = downGrade(normalQty);
+        if(isValidQty(pair, normalQty)) return normalQty.toString();
+        else return null;
     }
 
     @Override
     public String getQtyForSell(String pair, BigDecimal amt) {
         return null;
+    }
+
+    @Override
+    public boolean isAllPairTrading(PairTriangle triangle) {
+        return getTradePairInfo(triangle.getFirstPair()).getTradeLimits().getSymbol().equals(SymbolStatus.TRADING.name()) &&
+        getTradePairInfo(triangle.getSecondPair()).getTradeLimits().getSymbol().equals(SymbolStatus.TRADING.name()) &&
+        getTradePairInfo(triangle.getFirstPair()).getTradeLimits().getSymbol().equals(SymbolStatus.TRADING.name());
     }
 
     @Override
@@ -125,6 +139,23 @@ public class BinanceTradeOperation implements TradeOperation {
             allPrices.put(tickerPrice.getSymbol(), new BigDecimal(tickerPrice.getPrice()));
         }
         return allPrices;
+    }
+
+    private BigDecimal normalizeQuantity(String pair, BigDecimal pairQuantity) {
+        BigDecimal step = getTradePairInfo(pair).getTradeLimits().getStepSize();
+        pairQuantity = pairQuantity.setScale(step.stripTrailingZeros().scale(), RoundingMode.DOWN);
+        return pairQuantity;
+    }
+
+    private BigDecimal downGrade(BigDecimal pairQuantity) {
+        pairQuantity = pairQuantity.setScale(pairQuantity.scale() - 1, RoundingMode.DOWN);
+        return pairQuantity;
+    }
+
+    private Boolean isValidQty(String pair, BigDecimal normalQuantity) {
+        BigDecimal minQty = getTradePairInfo(pair).getTradeLimits().getMinQty();
+        BigDecimal maxQty = getTradePairInfo(pair).getTradeLimits().getMaxQty();
+        return normalQuantity.compareTo(minQty) > 0 && normalQuantity.compareTo(maxQty) < 0;
     }
 
     @Autowired
