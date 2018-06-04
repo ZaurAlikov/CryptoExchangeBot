@@ -12,10 +12,10 @@ public class FakeBalanceImpl implements FakeBalance {
     private Map<String, BigDecimal> accountFakeBalance;
     private int scale = 8;
 
-    public FakeBalanceImpl(List<String> pairs) {
+    public FakeBalanceImpl(List<String> coins) {
         accountFakeBalance = new TreeMap<>();
-        for (String pair : pairs) {
-            accountFakeBalance.put(pair, BigDecimal.ZERO);
+        for (String coin : coins) {
+            accountFakeBalance.put(coin, BigDecimal.ZERO);
         }
     }
 
@@ -44,7 +44,7 @@ public class FakeBalanceImpl implements FakeBalance {
     public void reduceBalanceBySymbol(String symbol, BigDecimal value) {
         if (accountFakeBalance.size() > 0) {
             BigDecimal normValue = accountFakeBalance.get(symbol).subtract(value).setScale(scale, RoundingMode.DOWN);
-            if (normValue.compareTo(BigDecimal.ZERO) >= 0.0) {
+            if (normValue.compareTo(BigDecimal.ZERO) >= 0) {
                 setBalanceBySymbol(symbol, normValue);
             } else {
                 setBalanceBySymbol(symbol, normValue);
@@ -57,10 +57,10 @@ public class FakeBalanceImpl implements FakeBalance {
     public BigDecimal getAllBalanceInDollars(Map<String, BigDecimal> prices) {
         BigDecimal sum = BigDecimal.ZERO;
         if (accountFakeBalance.size() > 0) {
-            for (String pairPrice : prices.keySet()) {
-                for (String pairBalance : accountFakeBalance.keySet()) {
-                    if (pairPrice.equals(pairBalance)) {
-                        sum = sum.add(accountFakeBalance.get(pairBalance).multiply(prices.get(pairPrice)));
+            for (String coin : accountFakeBalance.keySet()) {
+                for (String pair : prices.keySet()) {
+                    if (pair.contains("USDT") && pair.contains(coin)) {
+                        sum = sum.add(accountFakeBalance.get(coin).multiply(prices.get(pair)));
                         break;
                     }
                 }
@@ -72,8 +72,8 @@ public class FakeBalanceImpl implements FakeBalance {
     @Override
     public void resetBalance() {
         if (accountFakeBalance.size() > 0) {
-            for (String pair : accountFakeBalance.keySet()) {
-                accountFakeBalance.replace(pair, BigDecimal.ZERO);
+            for (String coin : accountFakeBalance.keySet()) {
+                accountFakeBalance.replace(coin, BigDecimal.ZERO);
             }
         }
     }

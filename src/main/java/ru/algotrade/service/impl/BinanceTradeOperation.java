@@ -90,7 +90,9 @@ public class BinanceTradeOperation implements TradeOperation {
 
     @Override
     public String getQtyForSell(String pair, BigDecimal amt) {
-        return null;
+        BigDecimal normalQty = normalizeQuantity(pair, amt);
+        if(isValidQty(pair, normalQty)) return normalQty.toString();
+        else return null;
     }
 
     @Override
