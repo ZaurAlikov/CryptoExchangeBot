@@ -13,13 +13,15 @@ public interface TradeOperation {
 
     BigDecimal sell(String pair, String price, String qty);
 
-    BigDecimal marketBuy(String pair, String qty);
+    BigDecimal marketBuy(String pair, String qty, boolean test);
 
-    BigDecimal marketSell(String pair, String qty);
+    BigDecimal marketSell(String pair, String qty, boolean test);
 
     String getQtyForBuy(String pair, BigDecimal amt);
 
     String getQtyForSell(String pair, BigDecimal amt);
+
+    BigDecimal fee();
 
     boolean isAllPairTrading(PairTriangle triangle);
 

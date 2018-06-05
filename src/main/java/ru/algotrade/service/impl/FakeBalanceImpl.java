@@ -12,7 +12,7 @@ public class FakeBalanceImpl implements FakeBalance {
     private Map<String, BigDecimal> accountFakeBalance;
     private int scale = 8;
 
-    public FakeBalanceImpl(List<String> coins) {
+    FakeBalanceImpl(List<String> coins) {
         accountFakeBalance = new TreeMap<>();
         for (String coin : coins) {
             accountFakeBalance.put(coin, BigDecimal.ZERO);
