@@ -1,9 +1,12 @@
 package ru.algotrade.service;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Map;
 
 public interface FakeBalance {
+    void init(List<String> coins);
+
     BigDecimal getBalanceBySymbol(String symbol);
 
     void setBalanceBySymbol(String symbol, BigDecimal value);

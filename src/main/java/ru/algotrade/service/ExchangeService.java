@@ -13,5 +13,5 @@ public interface ExchangeService {
 
     boolean isProfit(PairTriangle triangle, BigDecimal initAmt, BigDecimal bound);
 
-    void trade(PairTriangle triangle, BigDecimal initAmt, String mainCur);
+    void trade(PairTriangle triangle, BigDecimal initAmt, String mainCur, boolean isTest);
 }

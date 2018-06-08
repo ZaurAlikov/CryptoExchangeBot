@@ -38,7 +38,7 @@ public class TradeLimits {
         this.symbol = symbol;
     }
 
-    public String isStatus() {
+    public String getStatus() {
         return status;
     }
 

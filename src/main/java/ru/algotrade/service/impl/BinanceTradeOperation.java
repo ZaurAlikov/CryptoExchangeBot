@@ -44,6 +44,9 @@ public class BinanceTradeOperation implements TradeOperation {
         BinanceApiClientFactory factory = BinanceApiClientFactory.newInstance(apiKey, secretKey);
         apiRestClient = factory.newRestClient();
         apiAsyncRestClient = factory.newAsyncRestClient();
+        exchangeInfo = apiRestClient.getExchangeInfo();
+        prices = apiRestClient.getAllPrices();
+        tradeBooks = apiRestClient.getBookTickers();
         startRefreshingPrices();
         startRefreshingTradeBook();
         startRefreshingExchangeInfo();
@@ -122,9 +125,9 @@ public class BinanceTradeOperation implements TradeOperation {
 
     @Override
     public boolean isAllPairTrading(PairTriangle triangle) {
-        return getTradePairInfo(triangle.getFirstPair()).getTradeLimits().getSymbol().equals(SymbolStatus.TRADING.name()) &&
-        getTradePairInfo(triangle.getSecondPair()).getTradeLimits().getSymbol().equals(SymbolStatus.TRADING.name()) &&
-        getTradePairInfo(triangle.getFirstPair()).getTradeLimits().getSymbol().equals(SymbolStatus.TRADING.name());
+        return getTradePairInfo(triangle.getFirstPair()).getTradeLimits().getStatus().equals(SymbolStatus.TRADING.name()) &&
+        getTradePairInfo(triangle.getSecondPair()).getTradeLimits().getStatus().equals(SymbolStatus.TRADING.name()) &&
+        getTradePairInfo(triangle.getFirstPair()).getTradeLimits().getStatus().equals(SymbolStatus.TRADING.name());
     }
 
     @Override

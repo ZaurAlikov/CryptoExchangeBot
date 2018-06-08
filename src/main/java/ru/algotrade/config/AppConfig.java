@@ -3,6 +3,7 @@ package ru.algotrade.config;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.context.annotation.PropertySource;
 import ru.algotrade.mapping.TradePairBinanceMapper;
 import ru.algotrade.mapping.TradePairBinanceMapperImpl;
@@ -21,11 +22,6 @@ public class AppConfig {
     String secretKey;
 
     @Bean
-    ExchangeService exchangeService(){
-        return new ExchangeServiceImpl();
-    }
-
-    @Bean
     TradeOperation tradeOperation(){
         return new BinanceTradeOperation(apiKey, secretKey);
     }
@@ -33,6 +29,12 @@ public class AppConfig {
     @Bean
     TradePairBinanceMapper tradePairBinanceMapper(){
         return new TradePairBinanceMapperImpl();
+    }
+
+    @Bean
+    @DependsOn("tradeOperation")
+    ExchangeService exchangeService(){
+        return new ExchangeServiceImpl();
     }
 
 }
