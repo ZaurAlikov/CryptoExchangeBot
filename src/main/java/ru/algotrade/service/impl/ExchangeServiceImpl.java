@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.stereotype.Service;
+import ru.algotrade.enums.TradeType;
 import ru.algotrade.model.PairTriangle;
 import ru.algotrade.service.ExchangeService;
 import ru.algotrade.service.FakeBalance;
@@ -25,14 +26,14 @@ public class ExchangeServiceImpl implements ExchangeService {
 
     @Value("${main_currency}")
     private String mainCur;
-    private boolean isTest;
+    private TradeType tradeType;
     private TradeOperation tradeOperation;
     private FakeBalance fakeBalance;
     private Logger logger = LoggerFactory.getLogger(ExchangeServiceImpl.class);
 
     public ExchangeServiceImpl() {
         fakeBalance = new FakeBalanceImpl();
-        isTest = true;
+        tradeType = TradeType.TEST;
     }
 
     @Override
@@ -42,11 +43,93 @@ public class ExchangeServiceImpl implements ExchangeService {
         BigDecimal bound = new BigDecimal("0.01");
         List<String> allPairs = tradeOperation.getAllPair();
         List<PairTriangle> triangles = getAllTriangles(allPairs, mainCur);
-        for (PairTriangle triangle : triangles) {
-            if (isProfit(triangle, initAmt, bound)) {
-                trade(triangle, initAmt, mainCur, isTest);
+        while (true){
+            for (PairTriangle triangle : triangles) {
+                fakeBalance.setBalanceBySymbol(mainCur, new BigDecimal("20"));
+                if (isProfit(triangle, initAmt, bound)) {
+                    trade(triangle, initAmt, mainCur, tradeType);
+                }
+                fakeBalance.resetBalance();
             }
         }
+    }
+
+    @Override
+    public boolean isProfit(PairTriangle triangle, BigDecimal initAmt, BigDecimal bound) {
+        BigDecimal beforeBal = fakeBalance.getBalanceBySymbol(mainCur);
+        trade(triangle, initAmt, mainCur, TradeType.PROFIT);
+        BigDecimal afterBal = fakeBalance.getBalanceBySymbol(mainCur);
+        BigDecimal profit = divide(multiply(subtract(afterBal, beforeBal), toBigDec("100")), initAmt, 2);
+        boolean result = profit.compareTo(bound) >= 0;
+        if (result) logger.debug("Profit size: " + subtract(afterBal, beforeBal).toString() + " " + mainCur + " (" + profit + "%)" + triangle);
+        return result;
+    }
+
+    @Override
+    public void trade(PairTriangle triangle, BigDecimal initAmt, String mainCur, TradeType tradeType) {
+        BigDecimal resultAmt;
+        String requiredCurrency;
+        String firstPair = triangle.getFirstPair();
+        String secondPair = triangle.getSecondPair();
+        String thirdPair = triangle.getThirdPair();
+        if (tradeOperation.isAllPairTrading(triangle)) {
+            requiredCurrency = getRequiredCurrency(firstPair, mainCur);
+            resultAmt = newMarketOrder(firstPair, requiredCurrency, initAmt, tradeType);
+            requiredCurrency = getRequiredCurrency(secondPair, requiredCurrency);
+            resultAmt = newMarketOrder(secondPair, requiredCurrency, resultAmt, tradeType);
+            requiredCurrency = getRequiredCurrency(thirdPair, requiredCurrency);
+            resultAmt = newMarketOrder(thirdPair, requiredCurrency, resultAmt, tradeType);
+            if (tradeType == TradeType.TRADE) logger.debug("Trade result = " + resultAmt + " " + mainCur);
+        } else logger.debug("Trade in one or more pairs is not allowed");
+    }
+
+    private BigDecimal newMarketOrder(String pair, String buyCoin, BigDecimal qty, TradeType tradeType) {
+        String normalQty;
+        BigDecimal resultAmt = BigDecimal.ZERO;
+        if (pair.contains(buyCoin)) {
+            if (isBaseCurrency(pair, buyCoin)) {
+                normalQty = tradeOperation.getQtyForBuy(pair, qty);
+                if (normalQty != null) {
+                    switch (tradeType){
+                        case TRADE:
+                            resultAmt = tradeOperation.marketBuy(pair, normalQty, TradeType.TRADE);
+                            break;
+                        case TEST:
+                            resultAmt = tradeOperation.marketBuy(pair, normalQty, TradeType.TEST);
+                            fakeBalanceFilling(getRequiredCurrency(pair, buyCoin), qty, buyCoin, toBigDec(normalQty));
+                            break;
+                        case PROFIT:
+                            resultAmt = tradeOperation.marketBuy(pair, normalQty, TradeType.PROFIT);
+                            fakeBalanceFilling(getRequiredCurrency(pair, buyCoin), qty, buyCoin, toBigDec(normalQty));
+                            break;
+                    }
+                }
+            } else {
+                normalQty = tradeOperation.getQtyForSell(pair, qty);
+                if (normalQty != null) {
+                    switch (tradeType){
+                        case TRADE:
+                            resultAmt = tradeOperation.marketSell(pair, normalQty, TradeType.TRADE);
+                            break;
+                        case TEST:
+                            resultAmt = tradeOperation.marketSell(pair, normalQty, TradeType.TEST);
+                            fakeBalanceFilling(getRequiredCurrency(pair, buyCoin), toBigDec(normalQty), buyCoin, resultAmt);
+                            break;
+                        case PROFIT:
+                            resultAmt = tradeOperation.marketSell(pair, normalQty, TradeType.PROFIT);
+                            fakeBalanceFilling(getRequiredCurrency(pair, buyCoin), toBigDec(normalQty), buyCoin, resultAmt);
+                            break;
+                    }
+                }
+            }
+        } else logger.debug("Pair don`t contain buyCoin");
+        return resultAmt;
+    }
+
+    private void fakeBalanceFilling(String spentCurrency, BigDecimal spent, String boughtCurrency, BigDecimal bought){
+        fakeBalance.reduceBalanceBySymbol(spentCurrency, spent);
+        fakeBalance.addBalanceBySymbol(boughtCurrency, bought);
+        //TODO Реализовать логику расчета коммиссии
     }
 
     @Override
@@ -85,67 +168,6 @@ public class ExchangeServiceImpl implements ExchangeService {
         }
         logger.debug("Created " + triangles.size() + " triangles");
         return triangles;
-    }
-
-    @Override
-    public boolean isProfit(PairTriangle triangle, BigDecimal initAmt, BigDecimal bound) {
-        BigDecimal beforeBal = fakeBalance.getBalanceBySymbol(mainCur);
-        trade(triangle, initAmt, mainCur, true);
-        BigDecimal afterBal = fakeBalance.getBalanceBySymbol(mainCur);
-        return subtract(afterBal, beforeBal).compareTo(bound) >= 0;
-    }
-
-    @Override
-    public void trade(PairTriangle triangle, BigDecimal initAmt, String mainCur, boolean isTest) {
-        BigDecimal resultAmt;
-        String requiredCurrency;
-        String firstPair = triangle.getFirstPair();
-        String secondPair = triangle.getSecondPair();
-        String thirdPair = triangle.getThirdPair();
-        if (tradeOperation.isAllPairTrading(triangle)) {
-            requiredCurrency = getRequiredCurrency(firstPair, mainCur);
-            resultAmt = newMarketOrder(firstPair, requiredCurrency, initAmt, isTest);
-            requiredCurrency = getRequiredCurrency(secondPair, requiredCurrency);
-            resultAmt = newMarketOrder(secondPair, requiredCurrency, resultAmt, isTest);
-            requiredCurrency = getRequiredCurrency(thirdPair, requiredCurrency);
-            resultAmt = newMarketOrder(thirdPair, requiredCurrency, resultAmt, isTest);
-            logger.debug("Trade result = " + resultAmt + " " + mainCur);
-        } else logger.debug("Trade in one or more pairs is not allowed");
-    }
-
-    private BigDecimal newMarketOrder(String pair, String buyCoin, BigDecimal qty, boolean isTest) {
-        String normalQty;
-        BigDecimal resultAmt = BigDecimal.ZERO;
-        if (pair.contains(buyCoin)) {
-            if (isBaseCurrency(pair, buyCoin)) {
-                normalQty = tradeOperation.getQtyForBuy(pair, qty);
-                if (normalQty != null) {
-                    if (isTest){
-                        resultAmt = tradeOperation.marketBuy(pair, normalQty, true);
-                        fakeBalanceFilling(getRequiredCurrency(pair, buyCoin), qty, buyCoin, toBigDec(normalQty));
-                    } else {
-                        resultAmt = tradeOperation.marketBuy(pair, normalQty, false);
-                    }
-                }
-            } else {
-                normalQty = tradeOperation.getQtyForSell(pair, qty);
-                if (normalQty != null) {
-                    if (isTest){
-                        resultAmt = tradeOperation.marketSell(pair, normalQty, true);
-                        fakeBalanceFilling(getRequiredCurrency(pair, buyCoin), toBigDec(normalQty), buyCoin, resultAmt);
-                    } else {
-                        resultAmt = tradeOperation.marketSell(pair, normalQty, false);
-                    }
-                }
-            }
-        } else logger.debug("Pair don`t contain buyCoin");
-        return resultAmt;
-    }
-
-    private void fakeBalanceFilling(String spentCurrency, BigDecimal spent, String boughtCurrency, BigDecimal bought){
-        fakeBalance.reduceBalanceBySymbol(spentCurrency, spent);
-        fakeBalance.addBalanceBySymbol(boughtCurrency, bought);
-        //TODO Реализовать логику расчета коммиссии
     }
 
     @Autowired

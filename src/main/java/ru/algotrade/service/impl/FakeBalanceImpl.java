@@ -12,9 +12,8 @@ public class FakeBalanceImpl implements FakeBalance {
     private Map<String, BigDecimal> accountFakeBalance;
     private int scale = 8;
 
-    FakeBalanceImpl() {
+    FakeBalanceImpl(){
     }
-
 
     public void init(List<String> coins) {
         accountFakeBalance = new TreeMap<>();

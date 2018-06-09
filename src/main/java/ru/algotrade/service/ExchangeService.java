@@ -1,5 +1,6 @@
 package ru.algotrade.service;
 
+import ru.algotrade.enums.TradeType;
 import ru.algotrade.model.PairTriangle;
 
 import java.math.BigDecimal;
@@ -13,5 +14,5 @@ public interface ExchangeService {
 
     boolean isProfit(PairTriangle triangle, BigDecimal initAmt, BigDecimal bound);
 
-    void trade(PairTriangle triangle, BigDecimal initAmt, String mainCur, boolean isTest);
+    void trade(PairTriangle triangle, BigDecimal initAmt, String mainCur, TradeType tradeType);
 }

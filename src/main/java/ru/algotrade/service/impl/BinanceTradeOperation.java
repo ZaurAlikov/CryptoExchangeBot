@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.stereotype.Service;
+import ru.algotrade.enums.TradeType;
 import ru.algotrade.mapping.TradePairBinanceMapper;
 import ru.algotrade.model.PairTriangle;
 import ru.algotrade.model.TradePair;
@@ -63,8 +64,8 @@ public class BinanceTradeOperation implements TradeOperation {
     }
 
     @Override
-    public BigDecimal marketBuy(String pair, String qty, boolean isTest) {
-        if(!isTest){
+    public BigDecimal marketBuy(String pair, String qty, TradeType tradeType) {
+        if(tradeType == TradeType.TRADE){
             NewOrderResponse orderResponse = apiRestClient.newOrder(NewOrder.marketBuy(pair, qty));
             List<Trade> tradeList = apiRestClient.getMyTrades(pair, 1);
             if (tradeList.size() > 0) {
@@ -76,15 +77,18 @@ public class BinanceTradeOperation implements TradeOperation {
             }
             logger.debug("Unsuccessful buy");
             return BigDecimal.ZERO;
-        } else {
+        } else if (tradeType == TradeType.TEST) {
             apiRestClient.newOrderTest(NewOrder.marketBuy(pair, qty));
             return toBigDec(qty);
+        } else if (tradeType == TradeType.PROFIT){
+            return toBigDec(qty);
         }
+        return BigDecimal.ZERO;
     }
 
     @Override
-    public BigDecimal marketSell(String pair, String qty, boolean test) {
-        if(!test){
+    public BigDecimal marketSell(String pair, String qty, TradeType tradeType) {
+        if(tradeType == TradeType.TRADE){
             NewOrderResponse orderResponse = apiRestClient.newOrder(NewOrder.marketSell(pair, qty));
             List<Trade> tradeList = apiRestClient.getMyTrades(pair, 1);
             if (tradeList.size() > 0) {
@@ -96,10 +100,13 @@ public class BinanceTradeOperation implements TradeOperation {
             }
             logger.debug("Unsuccessful sell");
             return BigDecimal.ZERO;
-        } else {
+        } else if (tradeType == TradeType.TEST) {
             apiRestClient.newOrderTest(NewOrder.marketSell(pair, qty));
             return multiply(getTradePairInfo(pair).getBidPrice(), qty);
+        } else if (tradeType == TradeType.PROFIT){
+            return multiply(getTradePairInfo(pair).getBidPrice(), qty);
         }
+        return BigDecimal.ZERO;
     }
 
     @Override

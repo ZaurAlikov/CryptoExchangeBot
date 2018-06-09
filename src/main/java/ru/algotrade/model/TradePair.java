@@ -27,7 +27,6 @@ public class TradePair {
     }
 
     public TradePair(){
-
     }
 
     public String getSymbol() {
