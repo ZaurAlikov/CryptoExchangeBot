@@ -40,6 +40,7 @@ public class BinanceTradeOperation implements TradeOperation {
     private ExchangeInfo exchangeInfo;
     private List<TickerPrice> prices;
     private List<BookTicker> tradeBooks;
+    private boolean BNBFee;
     private Logger logger = LoggerFactory.getLogger(BinanceTradeOperation.class);
 
     public BinanceTradeOperation(String apiKey, String secretKey){
@@ -49,6 +50,7 @@ public class BinanceTradeOperation implements TradeOperation {
         exchangeInfo = apiRestClient.getExchangeInfo();
         prices = apiRestClient.getAllPrices();
         tradeBooks = apiRestClient.getBookTickers();
+        BNBFee = true;
         startRefreshingPrices();
         startRefreshingTradeBook();
         startRefreshingExchangeInfo();
@@ -128,22 +130,26 @@ public class BinanceTradeOperation implements TradeOperation {
         else return null;
     }
 
-
-    public BigDecimal fee() {
-        return new BigDecimal("0.0005");
+    private BigDecimal fee() {
+        if(BNBFee) return new BigDecimal("0.0005");
+        else return new BigDecimal("0.001");
     }
 
     @Override
-    public BigDecimal fee(String spentCurrency, BigDecimal spent) {
+    public BigDecimal getFee(String spentCurrency, BigDecimal spent) {
         if(spentCurrency.equals("BNB")){
             return multiply(spent, fee());
         }
         for (String pair : getAllPair()) {
-            if(pair.contains(spentCurrency) && pair.contains("BNB")){
-                return multiply(spent, toBigDec(getPrice(pair).getPrice()), fee());
+            if(getTradePairInfo(pair).getBaseAsset().equals(spentCurrency) && getTradePairInfo(pair).getQuoteAsset().equals("BNB")){
+                return multiply(spent, getTradePairInfo(pair).getMarketPrice(), fee());
+            }
+            if(getTradePairInfo(pair).getQuoteAsset().equals(spentCurrency) && getTradePairInfo(pair).getBaseAsset().equals("BNB")){
+                return multiply(divide(spent, getTradePairInfo(pair).getMarketPrice()), fee());
             }
         }
-        throw new BinanceApiException("Fee exception");
+        return multiply(divide(multiply(spent, getTradePairInfo(spentCurrency.concat("BTC")).getMarketPrice()),
+                getTradePairInfo("BNBBTC").getMarketPrice()), fee());
     }
 
     @Override

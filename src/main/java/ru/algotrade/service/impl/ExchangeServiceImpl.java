@@ -48,6 +48,7 @@ public class ExchangeServiceImpl implements ExchangeService {
         while (true){
             for (PairTriangle triangle : triangles) {
                 fakeBalance.setBalanceBySymbol(mainCur, new BigDecimal("20"));
+                fakeBalance.setBalanceBySymbol("BNB", new BigDecimal("0.5"));
                 if (isProfit(triangle, initAmt, bound)) {
                     trade(triangle, initAmt, mainCur, tradeType);
                 }
@@ -58,9 +59,11 @@ public class ExchangeServiceImpl implements ExchangeService {
 
     @Override
     public boolean isProfit(PairTriangle triangle, BigDecimal initAmt, BigDecimal bound) {
-        BigDecimal beforeBal = fakeBalance.getBalanceBySymbol(mainCur);
+//        BigDecimal beforeBal = fakeBalance.getBalanceBySymbol(mainCur);
+        BigDecimal beforeBal = fakeBalance.getAllBalanceInDollars(tradeOperation.getAllPrices());
         trade(triangle, initAmt, mainCur, TradeType.PROFIT);
-        BigDecimal afterBal = fakeBalance.getBalanceBySymbol(mainCur);
+        BigDecimal afterBal = fakeBalance.getAllBalanceInDollars(tradeOperation.getAllPrices());
+//        BigDecimal afterBal = fakeBalance.getBalanceBySymbol(mainCur);
         BigDecimal profit = divide(multiply(subtract(afterBal, beforeBal), toBigDec("100")), initAmt, 2);
         boolean result = profit.compareTo(bound) >= 0;
         if (result) logger.debug("Profit size: " + subtract(afterBal, beforeBal).toString() + " " + mainCur + " (" + profit + "%)" + triangle);
@@ -103,6 +106,7 @@ public class ExchangeServiceImpl implements ExchangeService {
                         case PROFIT:
                             resultAmt = tradeOperation.marketBuy(pair, normalQty, TradeType.PROFIT);
                             fakeBalanceFilling(getRequiredCurrency(pair, buyCoin), qty, buyCoin, toBigDec(normalQty));
+                            logger.debug("profit.buy  pair: "+pair+", Qty: "+qty+", normalQty: "+normalQty+", получено: "+resultAmt+ ", "+buyCoin+", по askPrice: "+tradeOperation.getTradePairInfo(pair).getAskPrice());
                             break;
                     }
                 }
@@ -120,6 +124,7 @@ public class ExchangeServiceImpl implements ExchangeService {
                         case PROFIT:
                             resultAmt = tradeOperation.marketSell(pair, normalQty, TradeType.PROFIT);
                             fakeBalanceFilling(getRequiredCurrency(pair, buyCoin), toBigDec(normalQty), buyCoin, resultAmt);
+                            logger.debug("profit.sell pair: "+pair+", Qty: "+qty+", normalQty: "+normalQty+", получено: "+resultAmt+ ", "+buyCoin+", по bidPrice: "+tradeOperation.getTradePairInfo(pair).getBidPrice());
                             break;
                     }
                 }
@@ -131,9 +136,8 @@ public class ExchangeServiceImpl implements ExchangeService {
     private void fakeBalanceFilling(String spentCurrency, BigDecimal spent, String boughtCurrency, BigDecimal bought){
         fakeBalance.reduceBalanceBySymbol(spentCurrency, spent);
         fakeBalance.addBalanceBySymbol(boughtCurrency, bought);
-        BigDecimal fee = tradeOperation.fee(spentCurrency, spent);
+        BigDecimal fee = tradeOperation.getFee(spentCurrency, spent);
         fakeBalance.reduceBalanceBySymbol("BNB", fee);
-        //TODO Реализовать логику расчета коммиссии
     }
 
     @Override
