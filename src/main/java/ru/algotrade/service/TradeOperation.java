@@ -22,7 +22,7 @@ public interface TradeOperation {
 
     String getQtyForSell(String pair, BigDecimal amt);
 
-    BigDecimal fee();
+    BigDecimal fee(String spentCurrency, BigDecimal spent);
 
     boolean isAllPairTrading(PairTriangle triangle);
 

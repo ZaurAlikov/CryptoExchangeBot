@@ -28,6 +28,7 @@ import java.math.RoundingMode;
 import java.util.*;
 
 import  static ru.algotrade.util.CalcUtils.*;
+import static ru.algotrade.util.CalcUtils.multiply;
 
 @Service
 @PropertySource("classpath:settings.properties")
@@ -81,7 +82,8 @@ public class BinanceTradeOperation implements TradeOperation {
             apiRestClient.newOrderTest(NewOrder.marketBuy(pair, qty));
             return toBigDec(qty);
         } else if (tradeType == TradeType.PROFIT){
-            return toBigDec(qty);
+            if(isNotional(toBigDec(qty), pair, "buy")) return toBigDec(qty);
+            else return BigDecimal.ZERO;
         }
         return BigDecimal.ZERO;
     }
@@ -104,7 +106,8 @@ public class BinanceTradeOperation implements TradeOperation {
             apiRestClient.newOrderTest(NewOrder.marketSell(pair, qty));
             return multiply(getTradePairInfo(pair).getBidPrice(), qty);
         } else if (tradeType == TradeType.PROFIT){
-            return multiply(getTradePairInfo(pair).getBidPrice(), qty);
+            if(isNotional(toBigDec(qty), pair, "sell")) return multiply(getTradePairInfo(pair).getBidPrice(), qty);
+            else return BigDecimal.ZERO;
         }
         return BigDecimal.ZERO;
     }
@@ -125,9 +128,22 @@ public class BinanceTradeOperation implements TradeOperation {
         else return null;
     }
 
-    @Override
+
     public BigDecimal fee() {
         return new BigDecimal("0.0005");
+    }
+
+    @Override
+    public BigDecimal fee(String spentCurrency, BigDecimal spent) {
+        if(spentCurrency.equals("BNB")){
+            return multiply(spent, fee());
+        }
+        for (String pair : getAllPair()) {
+            if(pair.contains(spentCurrency) && pair.contains("BNB")){
+                return multiply(spent, toBigDec(getPrice(pair).getPrice()), fee());
+            }
+        }
+        throw new BinanceApiException("Fee exception");
     }
 
     @Override
@@ -194,12 +210,23 @@ public class BinanceTradeOperation implements TradeOperation {
         return normalQuantity.compareTo(minQty) > 0 && normalQuantity.compareTo(maxQty) < 0;
     }
 
+    private Boolean isNotional(BigDecimal qty, String pair, String buyOrSell) {
+        boolean result = false;
+        if(buyOrSell.equals("buy")){
+            result = multiply(qty, getTradePairInfo(pair).getAskPrice()).compareTo(getTradePairInfo(pair).getTradeLimits().getMinNotional()) >= 0;
+        }
+        if(buyOrSell.equals("sell")){
+            result = multiply(qty, getTradePairInfo(pair).getBidPrice()).compareTo(getTradePairInfo(pair).getTradeLimits().getMinNotional()) >= 0;
+        }
+        return result;
+    }
+
     private TickerPrice getPrice(String pair) {
-        return prices.stream().filter(s -> s.getSymbol().equals(pair)).findFirst().get();
+        return prices.stream().filter(s -> s.getSymbol().equals(pair)).findFirst().orElse(null);
     }
 
     private BookTicker getTradeBook(String pair) {
-        return tradeBooks.stream().filter(s -> s.getSymbol().equals(pair)).findFirst().get();
+        return tradeBooks.stream().filter(s -> s.getSymbol().equals(pair)).findFirst().orElse(null);
     }
 
     private void startRefreshingTradeBook() {

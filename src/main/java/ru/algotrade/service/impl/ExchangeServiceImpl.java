@@ -15,6 +15,8 @@ import ru.algotrade.service.TradeOperation;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 import  static ru.algotrade.util.CalcUtils.*;
 import static ru.algotrade.util.Utils.getRequiredCurrency;
@@ -42,7 +44,7 @@ public class ExchangeServiceImpl implements ExchangeService {
         BigDecimal initAmt = new BigDecimal("15");
         BigDecimal bound = new BigDecimal("0.01");
         List<String> allPairs = tradeOperation.getAllPair();
-        List<PairTriangle> triangles = getAllTriangles(allPairs, mainCur);
+        List<PairTriangle> triangles = getAllTriangles(allPairs);
         while (true){
             for (PairTriangle triangle : triangles) {
                 fakeBalance.setBalanceBySymbol(mainCur, new BigDecimal("20"));
@@ -129,19 +131,36 @@ public class ExchangeServiceImpl implements ExchangeService {
     private void fakeBalanceFilling(String spentCurrency, BigDecimal spent, String boughtCurrency, BigDecimal bought){
         fakeBalance.reduceBalanceBySymbol(spentCurrency, spent);
         fakeBalance.addBalanceBySymbol(boughtCurrency, bought);
+        BigDecimal fee = tradeOperation.fee(spentCurrency, spent);
+        fakeBalance.reduceBalanceBySymbol("BNB", fee);
         //TODO Реализовать логику расчета коммиссии
     }
 
     @Override
-    public List<PairTriangle> getAllTriangles(List<String> Pairs, String mainCur) {
+    public List<PairTriangle> getAllTriangles(List<String> pairs) {
+        Map<String, List<String>> pairsAndCoins = getFirstPairsAndCoins(pairs);
+        List<String> firstPairs = pairsAndCoins.get("firstPairs");
+        List<String> coins = pairsAndCoins.get("coins");
+        List<String> secondPairs = getSecondPairs(coins, pairs);
+        return getPairTriangles(firstPairs, secondPairs);
+    }
+
+    private Map<String, List<String>> getFirstPairsAndCoins(List<String> pairs){
+        Map<String, List<String>> pairsAndCoins = new TreeMap<>();
         List<String> firstPairs = new ArrayList<>();
         List<String> coins = new ArrayList<>();
-        for (String pair : Pairs) {
+        for (String pair : pairs) {
             if (pair.contains(mainCur)) {
                 firstPairs.add(pair);
                 coins.add(pair.replace(mainCur, ""));
             }
         }
+        pairsAndCoins.put("firstPairs", firstPairs);
+        pairsAndCoins.put("coins", coins);
+        return pairsAndCoins;
+    }
+
+    private List<String> getSecondPairs(List<String> coins, List<String> pairs) {
         List<String> secondPairs = new ArrayList<>();
         for (String coin : coins) {
             for (String coin2 : coins) {
@@ -150,16 +169,18 @@ public class ExchangeServiceImpl implements ExchangeService {
                 }
             }
         }
-        secondPairs.removeIf(s -> !Pairs.contains(s));
-        PairTriangle triangle;
+        secondPairs.removeIf(s -> !pairs.contains(s));
+        return secondPairs;
+    }
+
+    private List<PairTriangle> getPairTriangles(List<String> firstPairs, List<String> secondPairs) {
         List<PairTriangle> triangles = new ArrayList<>();
         for (String pair1 : firstPairs) {
             for (String pair2 : secondPairs) {
                 if (pair2.contains(pair1.replace(mainCur, ""))) {
                     for (String pair3 : firstPairs) {
                         if (pair3.contains(pair2.replace(pair1.replace(mainCur, ""), ""))) {
-                            triangle = new PairTriangle(pair1, pair2, pair3, true);
-                            triangles.add(triangle);
+                            triangles.add(new PairTriangle(pair1, pair2, pair3, true));
                             break;
                         }
                     }
