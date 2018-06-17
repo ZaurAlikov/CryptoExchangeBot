@@ -28,6 +28,7 @@ public class ExchangeServiceImpl implements ExchangeService {
 
     @Value("${main_currency}")
     private String mainCur;
+    private PairTriangle currentTriangle;
     private TradeType tradeType;
     private TradeOperation tradeOperation;
     private FakeBalance fakeBalance;
@@ -74,9 +75,13 @@ public class ExchangeServiceImpl implements ExchangeService {
     public void trade(PairTriangle triangle, BigDecimal initAmt, String mainCur, TradeType tradeType) {
         BigDecimal resultAmt;
         String requiredCurrency;
+        currentTriangle = triangle;
         String firstPair = triangle.getFirstPair();
         String secondPair = triangle.getSecondPair();
         String thirdPair = triangle.getThirdPair();
+        if(triangle.getFirstPair().equals("TUSDUSDT")){
+            System.out.println("");
+        }
         if (tradeOperation.isAllPairTrading(triangle)) {
             requiredCurrency = getRequiredCurrency(firstPair, mainCur);
             resultAmt = newMarketOrder(firstPair, requiredCurrency, initAmt, tradeType);
@@ -93,7 +98,7 @@ public class ExchangeServiceImpl implements ExchangeService {
         BigDecimal resultAmt = BigDecimal.ZERO;
         if (pair.contains(buyCoin)) {
             if (isBaseCurrency(pair, buyCoin)) {
-                normalQty = tradeOperation.getQtyForBuy(pair, qty);
+                normalQty = tradeOperation.getQtyForBuy(pair, qty, currentTriangle);
                 if (normalQty != null) {
                     switch (tradeType){
                         case TRADE:

@@ -4,7 +4,6 @@ import ru.algotrade.service.FakeBalance;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -75,6 +74,17 @@ public class FakeBalanceImpl implements FakeBalance {
             }
             sum = add(sum, accountFakeBalance.get("USDT"));
         }
+
+
+
+        accountFakeBalance.entrySet().forEach(e -> {
+            if(!e.getKey().equals("USDT") && !e.getKey().equals("BNB") && e.getValue().compareTo(BigDecimal.ZERO) > 0){
+                System.out.println("123");
+            }
+        });
+
+
+
         return sum;
     }
 

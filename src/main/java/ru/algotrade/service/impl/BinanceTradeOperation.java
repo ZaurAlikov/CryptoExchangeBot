@@ -115,10 +115,14 @@ public class BinanceTradeOperation implements TradeOperation {
     }
 
     @Override
-    public String getQtyForBuy(String pair, BigDecimal amt) {
+    public String getQtyForBuy(String pair, BigDecimal amt, PairTriangle triangle) {
         BigDecimal normalQty = normalizeQuantity(pair, divide(amt, getTradePairInfo(pair).getAskPrice()));
-        //TODO Необходимо как-то избавиться от этой проверки
-        if(pair.equals("QTUMUSDT")) normalQty = downGrade(normalQty);
+        if (getTradePairInfo(triangle.getFirstPair()).getTradeLimits().getStepSize()
+                .compareTo(getTradePairInfo(triangle.getSecondPair()).getTradeLimits().getStepSize()) < 0){
+            normalQty = normalQty.setScale(getTradePairInfo(triangle.getSecondPair()).getTradeLimits().getStepSize().stripTrailingZeros().scale(), RoundingMode.DOWN);
+        }
+//        //TODO Необходимо как-то избавиться от этой проверки
+//        if(pair.equals("QTUMUSDT")) normalQty = downGrade(normalQty);
         if(isValidQty(pair, normalQty)) return normalQty.toString();
         else return null;
     }
