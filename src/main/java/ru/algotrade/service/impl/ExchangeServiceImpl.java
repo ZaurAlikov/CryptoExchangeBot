@@ -28,6 +28,7 @@ public class ExchangeServiceImpl implements ExchangeService {
 
     @Value("${main_currency}")
     private String mainCur;
+    private BigDecimal initAmt;
     private PairTriangle currentTriangle;
     private TradeType tradeType;
     private TradeOperation tradeOperation;
@@ -42,7 +43,7 @@ public class ExchangeServiceImpl implements ExchangeService {
     @Override
     public void startTrade() {
         fakeBalance.init(tradeOperation.getAllCoins());
-        BigDecimal initAmt = new BigDecimal("15");
+        initAmt = new BigDecimal("15");
         BigDecimal bound = new BigDecimal("0.01");
         List<String> allPairs = tradeOperation.getAllPair();
         List<PairTriangle> triangles = getAllTriangles(allPairs);
@@ -50,7 +51,8 @@ public class ExchangeServiceImpl implements ExchangeService {
             for (PairTriangle triangle : triangles) {
                 fakeBalance.setBalanceBySymbol(mainCur, new BigDecimal("20"));
                 fakeBalance.setBalanceBySymbol("BNB", new BigDecimal("0.5"));
-                if (isProfit(triangle, initAmt, bound)) {
+                tradeOperation.setNoTrade(false);
+                if (isProfit(triangle, bound) && !tradeOperation.isNoTrade()) {
                     trade(triangle, initAmt, mainCur, tradeType);
                 }
                 fakeBalance.resetBalance();
@@ -59,10 +61,13 @@ public class ExchangeServiceImpl implements ExchangeService {
     }
 
     @Override
-    public boolean isProfit(PairTriangle triangle, BigDecimal initAmt, BigDecimal bound) {
+    public boolean isProfit(PairTriangle triangle, BigDecimal bound) {
 //        BigDecimal beforeBal = fakeBalance.getBalanceBySymbol(mainCur);
         BigDecimal beforeBal = fakeBalance.getAllBalanceInDollars(tradeOperation.getAllPrices());
         trade(triangle, initAmt, mainCur, TradeType.PROFIT);
+        if (tradeOperation.isNoTrade()) {
+            return false;
+        }
         BigDecimal afterBal = fakeBalance.getAllBalanceInDollars(tradeOperation.getAllPrices());
 //        BigDecimal afterBal = fakeBalance.getBalanceBySymbol(mainCur);
         BigDecimal profit = divide(multiply(subtract(afterBal, beforeBal), toBigDec("100")), initAmt, 2);
@@ -82,12 +87,22 @@ public class ExchangeServiceImpl implements ExchangeService {
         if(triangle.getFirstPair().equals("TUSDUSDT")){
             System.out.println("");
         }
+
+//        if(triangle.getFirstPair().equals("BCCUSDT") && triangle.getSecondPair().equals("BCCBTC") && triangle.getThirdPair().equals("BTCUSDT")){
+//            System.out.println("erwer");
+//        }
+
         if (tradeOperation.isAllPairTrading(triangle)) {
             requiredCurrency = getRequiredCurrency(firstPair, mainCur);
+            PairTriangle.NUM_PAIR = 1;
             resultAmt = newMarketOrder(firstPair, requiredCurrency, initAmt, tradeType);
             requiredCurrency = getRequiredCurrency(secondPair, requiredCurrency);
+            if (tradeOperation.isNoTrade()) return;
+            PairTriangle.NUM_PAIR = 2;
             resultAmt = newMarketOrder(secondPair, requiredCurrency, resultAmt, tradeType);
             requiredCurrency = getRequiredCurrency(thirdPair, requiredCurrency);
+            if (tradeOperation.isNoTrade()) return;
+            PairTriangle.NUM_PAIR = 3;
             resultAmt = newMarketOrder(thirdPair, requiredCurrency, resultAmt, tradeType);
             if (tradeType == TradeType.TRADE) logger.debug("Trade result = " + resultAmt + " " + mainCur);
         } else logger.debug("Trade in one or more pairs is not allowed");
@@ -110,13 +125,14 @@ public class ExchangeServiceImpl implements ExchangeService {
                             break;
                         case PROFIT:
                             resultAmt = tradeOperation.marketBuy(pair, normalQty, TradeType.PROFIT);
+                            if (tradeOperation.isNoTrade()) break;
                             fakeBalanceFilling(getRequiredCurrency(pair, buyCoin), qty, buyCoin, toBigDec(normalQty));
-                            logger.debug("profit.buy  pair: "+pair+", Qty: "+qty+", normalQty: "+normalQty+", получено: "+resultAmt+ ", "+buyCoin+", по askPrice: "+tradeOperation.getTradePairInfo(pair).getAskPrice());
+                            logger.debug("profit.buy "+PairTriangle.NUM_PAIR+" pair: "+pair+", Qty: "+qty+", normalQty: "+normalQty+", получено: "+resultAmt+ ", "+buyCoin+", по askPrice: "+tradeOperation.getTradePairInfo(pair).getAskPrice());
                             break;
                     }
                 }
             } else {
-                normalQty = tradeOperation.getQtyForSell(pair, qty);
+                normalQty = tradeOperation.getQtyForSell(pair, qty, currentTriangle);
                 if (normalQty != null) {
                     switch (tradeType){
                         case TRADE:
@@ -128,8 +144,9 @@ public class ExchangeServiceImpl implements ExchangeService {
                             break;
                         case PROFIT:
                             resultAmt = tradeOperation.marketSell(pair, normalQty, TradeType.PROFIT);
+                            if (tradeOperation.isNoTrade()) break;
                             fakeBalanceFilling(getRequiredCurrency(pair, buyCoin), toBigDec(normalQty), buyCoin, resultAmt);
-                            logger.debug("profit.sell pair: "+pair+", Qty: "+qty+", normalQty: "+normalQty+", получено: "+resultAmt+ ", "+buyCoin+", по bidPrice: "+tradeOperation.getTradePairInfo(pair).getBidPrice());
+                            logger.debug("profit.sell "+PairTriangle.NUM_PAIR+" pair: "+pair+", Qty: "+qty+", normalQty: "+normalQty+", получено: "+resultAmt+ ", "+buyCoin+", по bidPrice: "+tradeOperation.getTradePairInfo(pair).getBidPrice());
                             break;
                     }
                 }
@@ -143,6 +160,7 @@ public class ExchangeServiceImpl implements ExchangeService {
         fakeBalance.addBalanceBySymbol(boughtCurrency, bought);
         BigDecimal fee = tradeOperation.getFee(spentCurrency, spent);
         fakeBalance.reduceBalanceBySymbol("BNB", fee);
+
     }
 
     @Override
@@ -189,7 +207,7 @@ public class ExchangeServiceImpl implements ExchangeService {
                 if (pair2.contains(pair1.replace(mainCur, ""))) {
                     for (String pair3 : firstPairs) {
                         if (pair3.contains(pair2.replace(pair1.replace(mainCur, ""), ""))) {
-                            triangles.add(new PairTriangle(pair1, pair2, pair3, true));
+                            triangles.add(new PairTriangle(pair1, pair2, pair3));
                             break;
                         }
                     }

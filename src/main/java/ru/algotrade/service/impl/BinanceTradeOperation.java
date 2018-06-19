@@ -34,6 +34,8 @@ import static ru.algotrade.util.CalcUtils.multiply;
 @PropertySource("classpath:settings.properties")
 public class BinanceTradeOperation implements TradeOperation {
 
+    private static boolean NO_TRADE = false;
+
     private TradePairBinanceMapper tradePairBinanceMapper;
     private BinanceApiRestClient apiRestClient;
     private BinanceApiAsyncRestClient apiAsyncRestClient;
@@ -85,7 +87,7 @@ public class BinanceTradeOperation implements TradeOperation {
             return toBigDec(qty);
         } else if (tradeType == TradeType.PROFIT){
             if(isNotional(toBigDec(qty), pair, "buy")) return toBigDec(qty);
-            else return BigDecimal.ZERO;
+            else NO_TRADE = true;
         }
         return BigDecimal.ZERO;
     }
@@ -109,7 +111,7 @@ public class BinanceTradeOperation implements TradeOperation {
             return multiply(getTradePairInfo(pair).getBidPrice(), qty);
         } else if (tradeType == TradeType.PROFIT){
             if(isNotional(toBigDec(qty), pair, "sell")) return multiply(getTradePairInfo(pair).getBidPrice(), qty);
-            else return BigDecimal.ZERO;
+            else NO_TRADE = true;
         }
         return BigDecimal.ZERO;
     }
@@ -117,19 +119,32 @@ public class BinanceTradeOperation implements TradeOperation {
     @Override
     public String getQtyForBuy(String pair, BigDecimal amt, PairTriangle triangle) {
         BigDecimal normalQty = normalizeQuantity(pair, divide(amt, getTradePairInfo(pair).getAskPrice()));
-        if (getTradePairInfo(triangle.getFirstPair()).getTradeLimits().getStepSize()
-                .compareTo(getTradePairInfo(triangle.getSecondPair()).getTradeLimits().getStepSize()) < 0){
-            normalQty = normalQty.setScale(getTradePairInfo(triangle.getSecondPair()).getTradeLimits().getStepSize().stripTrailingZeros().scale(), RoundingMode.DOWN);
+        if (PairTriangle.NUM_PAIR == 1){
+            if (getTradePairInfo(triangle.getFirstPair()).getTradeLimits().getStepSize()
+                    .compareTo(getTradePairInfo(triangle.getSecondPair()).getTradeLimits().getStepSize()) < 0){
+                normalQty = normalQty.setScale(getTradePairInfo(triangle.getSecondPair()).getTradeLimits().getStepSize().stripTrailingZeros().scale(), RoundingMode.DOWN);
+
+            }
         }
-//        //TODO Необходимо как-то избавиться от этой проверки
-//        if(pair.equals("QTUMUSDT")) normalQty = downGrade(normalQty);
+        if (PairTriangle.NUM_PAIR == 2){
+            if (getTradePairInfo(triangle.getSecondPair()).getTradeLimits().getStepSize()
+                    .compareTo(getTradePairInfo(triangle.getThirdPair()).getTradeLimits().getStepSize()) < 0){
+                NO_TRADE = true;
+            }
+        }
         if(isValidQty(pair, normalQty)) return normalQty.toString();
         else return null;
     }
 
     @Override
-    public String getQtyForSell(String pair, BigDecimal amt) {
+    public String getQtyForSell(String pair, BigDecimal amt, PairTriangle triangle) {
         BigDecimal normalQty = normalizeQuantity(pair, amt);
+        if (PairTriangle.NUM_PAIR == 3){
+            if (getTradePairInfo(triangle.getThirdPair()).getTradeLimits().getStepSize().stripTrailingZeros().scale() <
+                    amt.stripTrailingZeros().scale()){
+                NO_TRADE = true;
+            }
+        }
         if(isValidQty(pair, normalQty)) return normalQty.toString();
         else return null;
     }
@@ -220,7 +235,7 @@ public class BinanceTradeOperation implements TradeOperation {
         return normalQuantity.compareTo(minQty) > 0 && normalQuantity.compareTo(maxQty) < 0;
     }
 
-    private Boolean isNotional(BigDecimal qty, String pair, String buyOrSell) {
+    private boolean isNotional(BigDecimal qty, String pair, String buyOrSell) {
         boolean result = false;
         if(buyOrSell.equals("buy")){
             result = multiply(qty, getTradePairInfo(pair).getAskPrice()).compareTo(getTradePairInfo(pair).getTradeLimits().getMinNotional()) >= 0;
@@ -237,6 +252,16 @@ public class BinanceTradeOperation implements TradeOperation {
 
     private BookTicker getTradeBook(String pair) {
         return tradeBooks.stream().filter(s -> s.getSymbol().equals(pair)).findFirst().orElse(null);
+    }
+
+    @Override
+    public boolean isNoTrade() {
+        return NO_TRADE;
+    }
+
+    @Override
+    public void setNoTrade(boolean noTrade) {
+        NO_TRADE = noTrade;
     }
 
     private void startRefreshingTradeBook() {

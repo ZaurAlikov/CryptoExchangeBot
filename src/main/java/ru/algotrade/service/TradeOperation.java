@@ -20,7 +20,7 @@ public interface TradeOperation {
 
     String getQtyForBuy(String pair, BigDecimal amt, PairTriangle triangle);
 
-    String getQtyForSell(String pair, BigDecimal amt);
+    String getQtyForSell(String pair, BigDecimal amt, PairTriangle triangle);
 
     BigDecimal getFee(String spentCurrency, BigDecimal spent);
 
@@ -33,4 +33,8 @@ public interface TradeOperation {
     List<String> getAllCoins();
 
     Map<String, BigDecimal> getAllPrices();
+
+    boolean isNoTrade();
+
+    void setNoTrade(boolean noTrade);
 }

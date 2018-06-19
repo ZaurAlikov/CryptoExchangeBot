@@ -2,16 +2,16 @@ package ru.algotrade.model;
 
 public class PairTriangle {
 
+    public static int NUM_PAIR = 0;
+
     private String firstPair;
     private String secondPair;
     private String thirdPair;
-    private boolean direct;
 
-    public PairTriangle(String firstPair, String secondPair, String thirdPair, boolean direct) {
+    public PairTriangle(String firstPair, String secondPair, String thirdPair) {
         this.firstPair = firstPair;
         this.secondPair = secondPair;
         this.thirdPair = thirdPair;
-        this.direct = direct;
     }
 
     public String getFirstPair() {
@@ -36,14 +36,6 @@ public class PairTriangle {
 
     public void setThirdPair(String thirdPair) {
         this.thirdPair = thirdPair;
-    }
-
-    public boolean isDirect() {
-        return direct;
-    }
-
-    public void setDirect(boolean direct) {
-        this.direct = direct;
     }
 
     @Override
