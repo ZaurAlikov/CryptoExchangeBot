@@ -49,11 +49,14 @@ public class ExchangeServiceImpl implements ExchangeService {
         List<PairTriangle> triangles = getAllTriangles(allPairs);
         while (true) {
             for (PairTriangle triangle : triangles) {
+                Long t1 = System.currentTimeMillis();
                 fakeBalance.setBalanceBySymbol(mainCur, new BigDecimal("20"));
                 fakeBalance.setBalanceBySymbol("BNB", new BigDecimal("0.5"));
                 tradeOperation.setNoTrade(false);
                 if (isProfit(triangle, bound) && !tradeOperation.isNoTrade()) {
                     trade(triangle, initAmt, mainCur, tradeType);
+                    long time = System.currentTimeMillis() - t1;
+                    logger.debug("Profit cycle execution time: " + time + " ms");
                 }
                 fakeBalance.resetBalance();
             }
@@ -62,7 +65,6 @@ public class ExchangeServiceImpl implements ExchangeService {
 
     @Override
     public boolean isProfit(PairTriangle triangle, BigDecimal bound) {
-        Long t1 = System.currentTimeMillis();
 //        BigDecimal beforeBal = fakeBalance.getBalanceBySymbol(mainCur);
         BigDecimal beforeBal = fakeBalance.getAllBalanceInDollars(tradeOperation.getAllPrices());
         trade(triangle, initAmt, mainCur, TradeType.PROFIT);
@@ -74,11 +76,7 @@ public class ExchangeServiceImpl implements ExchangeService {
         BigDecimal profit = subtract(divide(multiply(afterBal, toBigDec("100")), beforeBal), toBigDec("100"));
 //        BigDecimal profit = divide(multiply(subtract(afterBal, beforeBal), toBigDec("100")), initAmt, 2);
         boolean result = profit.compareTo(bound) >= 0;
-        if (result) {
-            logger.debug("Profit size: " + subtract(afterBal, beforeBal).toString() + " " + mainCur + " (" + profit + "%)" + triangle);
-            long time = System.currentTimeMillis() - t1;
-            logger.debug("Method (isProfit) execution time: " + time + " ms");
-        }
+        if (result) logger.debug("Profit size: " + subtract(afterBal, beforeBal).toString() + " " + mainCur + " (" + profit + "%)" + triangle);
         return result;
     }
 
