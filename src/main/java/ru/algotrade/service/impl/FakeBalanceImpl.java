@@ -75,15 +75,11 @@ public class FakeBalanceImpl implements FakeBalance {
             sum = add(sum, accountFakeBalance.get("USDT"));
         }
 
-
-
-        accountFakeBalance.entrySet().forEach(e -> {
-            if(!e.getKey().equals("USDT") && !e.getKey().equals("BNB") && e.getValue().compareTo(BigDecimal.ZERO) > 0){
-                System.out.println("123");
-            }
-        });
-
-
+//        accountFakeBalance.entrySet().forEach(e -> {
+//            if(!e.getKey().equals("USDT") && !e.getKey().equals("BNB") && e.getValue().compareTo(BigDecimal.ZERO) > 0){
+//                System.out.println("123");
+//            }
+//        });
 
         return sum;
     }

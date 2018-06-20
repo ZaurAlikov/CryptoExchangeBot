@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-import  static ru.algotrade.util.CalcUtils.*;
+import static ru.algotrade.util.CalcUtils.*;
 import static ru.algotrade.util.Utils.getRequiredCurrency;
 import static ru.algotrade.util.Utils.isBaseCurrency;
 
@@ -47,7 +47,7 @@ public class ExchangeServiceImpl implements ExchangeService {
         BigDecimal bound = new BigDecimal("0.01");
         List<String> allPairs = tradeOperation.getAllPair();
         List<PairTriangle> triangles = getAllTriangles(allPairs);
-        while (true){
+        while (true) {
             for (PairTriangle triangle : triangles) {
                 fakeBalance.setBalanceBySymbol(mainCur, new BigDecimal("20"));
                 fakeBalance.setBalanceBySymbol("BNB", new BigDecimal("0.5"));
@@ -62,6 +62,7 @@ public class ExchangeServiceImpl implements ExchangeService {
 
     @Override
     public boolean isProfit(PairTriangle triangle, BigDecimal bound) {
+        Long t1 = System.currentTimeMillis();
 //        BigDecimal beforeBal = fakeBalance.getBalanceBySymbol(mainCur);
         BigDecimal beforeBal = fakeBalance.getAllBalanceInDollars(tradeOperation.getAllPrices());
         trade(triangle, initAmt, mainCur, TradeType.PROFIT);
@@ -73,7 +74,11 @@ public class ExchangeServiceImpl implements ExchangeService {
         BigDecimal profit = subtract(divide(multiply(afterBal, toBigDec("100")), beforeBal), toBigDec("100"));
 //        BigDecimal profit = divide(multiply(subtract(afterBal, beforeBal), toBigDec("100")), initAmt, 2);
         boolean result = profit.compareTo(bound) >= 0;
-        if (result) logger.debug("Profit size: " + subtract(afterBal, beforeBal).toString() + " " + mainCur + " (" + profit + "%)" + triangle);
+        if (result) {
+            logger.debug("Profit size: " + subtract(afterBal, beforeBal).toString() + " " + mainCur + " (" + profit + "%)" + triangle);
+            long time = System.currentTimeMillis() - t1;
+            logger.debug("Method (isProfit) execution time: " + time + " ms");
+        }
         return result;
     }
 
@@ -85,11 +90,8 @@ public class ExchangeServiceImpl implements ExchangeService {
         String firstPair = triangle.getFirstPair();
         String secondPair = triangle.getSecondPair();
         String thirdPair = triangle.getThirdPair();
-        if(triangle.getFirstPair().equals("TUSDUSDT")){
-            System.out.println("");
-        }
 
-//        if(triangle.getFirstPair().equals("BCCUSDT") && triangle.getSecondPair().equals("BCCBTC") && triangle.getThirdPair().equals("BTCUSDT")){
+//        if(triangle.getFirstPair().equals("EOSUSDT") && triangle.getSecondPair().equals("EOSETH") && triangle.getThirdPair().equals("ETHUSDT")){
 //            System.out.println("erwer");
 //        }
 
@@ -116,9 +118,10 @@ public class ExchangeServiceImpl implements ExchangeService {
         if (pair.contains(buyCoin)) {
             if (isBaseCurrency(pair, buyCoin)) {
                 normalQty = tradeOperation.getQtyForBuy(pair, qty, currentTriangle);
-                if (PairTriangle.NUM_PAIR == 1) qty = multiply(tradeOperation.getTradePairInfo(pair).getAskPrice(), normalQty);
                 if (normalQty != null) {
-                    switch (tradeType){
+                    if (PairTriangle.NUM_PAIR == 1)
+                        qty = multiply(tradeOperation.getTradePairInfo(pair).getAskPrice(), normalQty);
+                    switch (tradeType) {
                         case TRADE:
                             resultAmt = tradeOperation.marketBuy(pair, normalQty, TradeType.TRADE);
                             break;
@@ -130,14 +133,14 @@ public class ExchangeServiceImpl implements ExchangeService {
                             resultAmt = tradeOperation.marketBuy(pair, normalQty, TradeType.PROFIT);
                             if (tradeOperation.isNoTrade()) break;
                             fakeBalanceFilling(getRequiredCurrency(pair, buyCoin), qty, buyCoin, toBigDec(normalQty));
-                            logger.debug("profit.buy "+PairTriangle.NUM_PAIR+" pair: "+pair+", Qty: "+qty+", normalQty: "+normalQty+", получено: "+resultAmt+ ", "+buyCoin+", по askPrice: "+tradeOperation.getTradePairInfo(pair).getAskPrice());
+                            logger.trace("profit.buy " + PairTriangle.NUM_PAIR + " pair: " + pair + ", Qty: " + qty + ", normalQty: " + normalQty + ", получено: " + resultAmt + ", " + buyCoin + ", по askPrice: " + tradeOperation.getTradePairInfo(pair).getAskPrice());
                             break;
                     }
                 }
             } else {
                 normalQty = tradeOperation.getQtyForSell(pair, qty, currentTriangle);
                 if (normalQty != null) {
-                    switch (tradeType){
+                    switch (tradeType) {
                         case TRADE:
                             resultAmt = tradeOperation.marketSell(pair, normalQty, TradeType.TRADE);
                             break;
@@ -149,7 +152,7 @@ public class ExchangeServiceImpl implements ExchangeService {
                             resultAmt = tradeOperation.marketSell(pair, normalQty, TradeType.PROFIT);
                             if (tradeOperation.isNoTrade()) break;
                             fakeBalanceFilling(getRequiredCurrency(pair, buyCoin), toBigDec(normalQty), buyCoin, resultAmt);
-                            logger.debug("profit.sell "+PairTriangle.NUM_PAIR+" pair: "+pair+", Qty: "+qty+", normalQty: "+normalQty+", получено: "+resultAmt+ ", "+buyCoin+", по bidPrice: "+tradeOperation.getTradePairInfo(pair).getBidPrice());
+                            logger.trace("profit.sell " + PairTriangle.NUM_PAIR + " pair: " + pair + ", Qty: " + qty + ", normalQty: " + normalQty + ", получено: " + resultAmt + ", " + buyCoin + ", по bidPrice: " + tradeOperation.getTradePairInfo(pair).getBidPrice());
                             break;
                     }
                 }
@@ -158,12 +161,11 @@ public class ExchangeServiceImpl implements ExchangeService {
         return resultAmt;
     }
 
-    private void fakeBalanceFilling(String spentCurrency, BigDecimal spent, String boughtCurrency, BigDecimal bought){
+    private void fakeBalanceFilling(String spentCurrency, BigDecimal spent, String boughtCurrency, BigDecimal bought) {
         fakeBalance.reduceBalanceBySymbol(spentCurrency, spent);
         fakeBalance.addBalanceBySymbol(boughtCurrency, bought);
         BigDecimal fee = tradeOperation.getFee(spentCurrency, spent);
         fakeBalance.reduceBalanceBySymbol("BNB", fee);
-
     }
 
     @Override
@@ -175,7 +177,7 @@ public class ExchangeServiceImpl implements ExchangeService {
         return getPairTriangles(firstPairs, secondPairs);
     }
 
-    private Map<String, List<String>> getFirstPairsAndCoins(List<String> pairs){
+    private Map<String, List<String>> getFirstPairsAndCoins(List<String> pairs) {
         Map<String, List<String>> pairsAndCoins = new TreeMap<>();
         List<String> firstPairs = new ArrayList<>();
         List<String> coins = new ArrayList<>();

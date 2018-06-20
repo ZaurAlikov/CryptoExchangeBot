@@ -87,7 +87,6 @@ public class BinanceTradeOperation implements TradeOperation {
             return toBigDec(qty);
         } else if (tradeType == TradeType.PROFIT){
             if(isNotional(toBigDec(qty), pair, "buy")) return toBigDec(qty);
-            else NO_TRADE = true;
         }
         return BigDecimal.ZERO;
     }
@@ -111,7 +110,6 @@ public class BinanceTradeOperation implements TradeOperation {
             return multiply(getTradePairInfo(pair).getBidPrice(), qty);
         } else if (tradeType == TradeType.PROFIT){
             if(isNotional(toBigDec(qty), pair, "sell")) return multiply(getTradePairInfo(pair).getBidPrice(), qty);
-            else NO_TRADE = true;
         }
         return BigDecimal.ZERO;
     }
@@ -218,21 +216,29 @@ public class BinanceTradeOperation implements TradeOperation {
         return allPrices;
     }
 
+    @Override
+    public boolean isNoTrade() {
+        return NO_TRADE;
+    }
+
+    @Override
+    public void setNoTrade(boolean noTrade) {
+        NO_TRADE = noTrade;
+    }
+
     private BigDecimal normalizeQuantity(String pair, BigDecimal pairQuantity) {
         BigDecimal step = getTradePairInfo(pair).getTradeLimits().getStepSize();
         pairQuantity = pairQuantity.setScale(step.stripTrailingZeros().scale(), RoundingMode.DOWN);
         return pairQuantity;
     }
 
-    private BigDecimal downGrade(BigDecimal pairQuantity) {
-        pairQuantity = pairQuantity.setScale(pairQuantity.scale() - 1, RoundingMode.DOWN);
-        return pairQuantity;
-    }
-
     private Boolean isValidQty(String pair, BigDecimal normalQuantity) {
+        boolean result;
         BigDecimal minQty = getTradePairInfo(pair).getTradeLimits().getMinQty();
         BigDecimal maxQty = getTradePairInfo(pair).getTradeLimits().getMaxQty();
-        return normalQuantity.compareTo(minQty) > 0 && normalQuantity.compareTo(maxQty) < 0;
+        result = normalQuantity.compareTo(minQty) > 0 && normalQuantity.compareTo(maxQty) < 0;
+        if (!result) NO_TRADE = true;
+        return result;
     }
 
     private boolean isNotional(BigDecimal qty, String pair, String buyOrSell) {
@@ -243,6 +249,7 @@ public class BinanceTradeOperation implements TradeOperation {
         if(buyOrSell.equals("sell")){
             result = multiply(qty, getTradePairInfo(pair).getBidPrice()).compareTo(getTradePairInfo(pair).getTradeLimits().getMinNotional()) >= 0;
         }
+        if (!result) NO_TRADE = true;
         return result;
     }
 
@@ -252,16 +259,6 @@ public class BinanceTradeOperation implements TradeOperation {
 
     private BookTicker getTradeBook(String pair) {
         return tradeBooks.stream().filter(s -> s.getSymbol().equals(pair)).findFirst().orElse(null);
-    }
-
-    @Override
-    public boolean isNoTrade() {
-        return NO_TRADE;
-    }
-
-    @Override
-    public void setNoTrade(boolean noTrade) {
-        NO_TRADE = noTrade;
     }
 
     private void startRefreshingTradeBook() {
