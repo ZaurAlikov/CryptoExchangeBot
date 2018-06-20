@@ -70,7 +70,8 @@ public class ExchangeServiceImpl implements ExchangeService {
         }
         BigDecimal afterBal = fakeBalance.getAllBalanceInDollars(tradeOperation.getAllPrices());
 //        BigDecimal afterBal = fakeBalance.getBalanceBySymbol(mainCur);
-        BigDecimal profit = divide(multiply(subtract(afterBal, beforeBal), toBigDec("100")), initAmt, 2);
+        BigDecimal profit = subtract(divide(multiply(afterBal, toBigDec("100")), beforeBal), toBigDec("100"));
+//        BigDecimal profit = divide(multiply(subtract(afterBal, beforeBal), toBigDec("100")), initAmt, 2);
         boolean result = profit.compareTo(bound) >= 0;
         if (result) logger.debug("Profit size: " + subtract(afterBal, beforeBal).toString() + " " + mainCur + " (" + profit + "%)" + triangle);
         return result;
@@ -108,12 +109,14 @@ public class ExchangeServiceImpl implements ExchangeService {
         } else logger.debug("Trade in one or more pairs is not allowed");
     }
 
-    private BigDecimal newMarketOrder(String pair, String buyCoin, BigDecimal qty, TradeType tradeType) {
+    private BigDecimal newMarketOrder(String pair, String buyCoin, BigDecimal preQty, TradeType tradeType) {
+        BigDecimal qty = preQty;
         String normalQty;
         BigDecimal resultAmt = BigDecimal.ZERO;
         if (pair.contains(buyCoin)) {
             if (isBaseCurrency(pair, buyCoin)) {
                 normalQty = tradeOperation.getQtyForBuy(pair, qty, currentTriangle);
+                if (PairTriangle.NUM_PAIR == 1) qty = multiply(tradeOperation.getTradePairInfo(pair).getAskPrice(), normalQty);
                 if (normalQty != null) {
                     switch (tradeType){
                         case TRADE:
