@@ -12,7 +12,7 @@ public interface ExchangeService {
 
     List<PairTriangle> getAllTriangles(List<String> Pairs);
 
-    boolean isProfit(PairTriangle triangle, BigDecimal bound);
+    boolean isProfit(PairTriangle triangle, BigDecimal initAmt, BigDecimal bound);
 
     void trade(PairTriangle triangle, BigDecimal initAmt, String mainCur, TradeType tradeType);
 }

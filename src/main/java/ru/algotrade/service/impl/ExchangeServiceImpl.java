@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.stereotype.Service;
 import ru.algotrade.enums.TradeType;
+import ru.algotrade.model.Fee;
 import ru.algotrade.model.PairTriangle;
 import ru.algotrade.service.ExchangeService;
 import ru.algotrade.service.FakeBalance;
@@ -28,7 +29,6 @@ public class ExchangeServiceImpl implements ExchangeService {
 
     @Value("${main_currency}")
     private String mainCur;
-    private BigDecimal initAmt;
     private PairTriangle currentTriangle;
     private TradeType tradeType;
     private TradeOperation tradeOperation;
@@ -36,24 +36,22 @@ public class ExchangeServiceImpl implements ExchangeService {
     private Logger logger = LoggerFactory.getLogger(ExchangeServiceImpl.class);
 
     public ExchangeServiceImpl() {
-        fakeBalance = new FakeBalanceImpl();
         tradeType = TradeType.TEST;
     }
 
     @Override
     public void startTrade() {
         fakeBalance.init(tradeOperation.getAllCoins());
-        initAmt = new BigDecimal("15");
+        BigDecimal initAmt = new BigDecimal("15");
         BigDecimal bound = new BigDecimal("0.01");
         List<String> allPairs = tradeOperation.getAllPair();
         List<PairTriangle> triangles = getAllTriangles(allPairs);
         while (true) {
             for (PairTriangle triangle : triangles) {
                 Long t1 = System.currentTimeMillis();
-                fakeBalance.setBalanceBySymbol(mainCur, new BigDecimal("20"));
-                fakeBalance.setBalanceBySymbol("BNB", new BigDecimal("0.5"));
+                fakeBalAmtInit(initAmt);
                 tradeOperation.setNoTrade(false);
-                if (isProfit(triangle, bound) && !tradeOperation.isNoTrade()) {
+                if (isProfit(triangle, initAmt, bound) && !tradeOperation.isNoTrade()) {
                     trade(triangle, initAmt, mainCur, tradeType);
                     long time = System.currentTimeMillis() - t1;
                     logger.debug("Profit cycle execution time: " + time + " ms");
@@ -64,17 +62,14 @@ public class ExchangeServiceImpl implements ExchangeService {
     }
 
     @Override
-    public boolean isProfit(PairTriangle triangle, BigDecimal bound) {
-//        BigDecimal beforeBal = fakeBalance.getBalanceBySymbol(mainCur);
-        BigDecimal beforeBal = fakeBalance.getAllBalanceInDollars(tradeOperation.getAllPrices());
+    public boolean isProfit(PairTriangle triangle, BigDecimal initAmt, BigDecimal bound) {
+        BigDecimal beforeBal = fakeBalance.getAllBalanceInMainCur(tradeOperation.getAllPrices());
         trade(triangle, initAmt, mainCur, TradeType.PROFIT);
         if (tradeOperation.isNoTrade()) {
             return false;
         }
-        BigDecimal afterBal = fakeBalance.getAllBalanceInDollars(tradeOperation.getAllPrices());
-//        BigDecimal afterBal = fakeBalance.getBalanceBySymbol(mainCur);
+        BigDecimal afterBal = fakeBalance.getAllBalanceInMainCur(tradeOperation.getAllPrices());
         BigDecimal profit = subtract(divide(multiply(afterBal, toBigDec("100")), beforeBal), toBigDec("100"));
-//        BigDecimal profit = divide(multiply(subtract(afterBal, beforeBal), toBigDec("100")), initAmt, 2);
         boolean result = profit.compareTo(bound) >= 0;
         if (result) logger.debug("Profit size: " + subtract(afterBal, beforeBal).toString() + " " + mainCur + " (" + profit + "%)" + triangle);
         return result;
@@ -88,11 +83,6 @@ public class ExchangeServiceImpl implements ExchangeService {
         String firstPair = triangle.getFirstPair();
         String secondPair = triangle.getSecondPair();
         String thirdPair = triangle.getThirdPair();
-
-//        if(triangle.getFirstPair().equals("EOSUSDT") && triangle.getSecondPair().equals("EOSETH") && triangle.getThirdPair().equals("ETHUSDT")){
-//            System.out.println("erwer");
-//        }
-
         if (tradeOperation.isAllPairTrading(triangle)) {
             requiredCurrency = getRequiredCurrency(firstPair, mainCur);
             PairTriangle.NUM_PAIR = 1;
@@ -159,13 +149,6 @@ public class ExchangeServiceImpl implements ExchangeService {
         return resultAmt;
     }
 
-    private void fakeBalanceFilling(String spentCurrency, BigDecimal spent, String boughtCurrency, BigDecimal bought) {
-        fakeBalance.reduceBalanceBySymbol(spentCurrency, spent);
-        fakeBalance.addBalanceBySymbol(boughtCurrency, bought);
-        BigDecimal fee = tradeOperation.getFee(spentCurrency, spent);
-        fakeBalance.reduceBalanceBySymbol("BNB", fee);
-    }
-
     @Override
     public List<PairTriangle> getAllTriangles(List<String> pairs) {
         Map<String, List<String>> pairsAndCoins = getFirstPairsAndCoins(pairs);
@@ -173,6 +156,20 @@ public class ExchangeServiceImpl implements ExchangeService {
         List<String> coins = pairsAndCoins.get("coins");
         List<String> secondPairs = getSecondPairs(coins, pairs);
         return getPairTriangles(firstPairs, secondPairs);
+    }
+
+    private void fakeBalanceFilling(String spentCurrency, BigDecimal spent, String boughtCurrency, BigDecimal bought) {
+        fakeBalance.reduceBalanceBySymbol(spentCurrency, spent);
+        fakeBalance.addBalanceBySymbol(boughtCurrency, bought);
+        Fee fee = tradeOperation.getFee(spentCurrency, spent);
+        fakeBalance.reduceBalanceBySymbol(fee.getSimbol(), fee.getFee());
+    }
+
+    private void fakeBalAmtInit(BigDecimal initAmt) {
+        fakeBalance.setBalanceBySymbol(mainCur, multiply(initAmt, "1.2"));
+        if (tradeOperation instanceof BinanceTradeOperation){
+            fakeBalance.setBalanceBySymbol("BNB", new BigDecimal("0.5"));
+        }
     }
 
     private Map<String, List<String>> getFirstPairsAndCoins(List<String> pairs) {
@@ -224,5 +221,10 @@ public class ExchangeServiceImpl implements ExchangeService {
     @Autowired
     public void setTradeOperation(TradeOperation tradeOperation) {
         this.tradeOperation = tradeOperation;
+    }
+
+    @Autowired
+    public void setFakeBalance(FakeBalance fakeBalance) {
+        this.fakeBalance = fakeBalance;
     }
 }

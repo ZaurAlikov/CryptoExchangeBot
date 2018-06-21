@@ -15,7 +15,7 @@ public interface FakeBalance {
 
     void reduceBalanceBySymbol(String symbol, BigDecimal value);
 
-    BigDecimal getAllBalanceInDollars(Map<String, BigDecimal> prices);
+    BigDecimal getAllBalanceInMainCur(Map<String, BigDecimal> prices);
 
     void resetBalance();
 

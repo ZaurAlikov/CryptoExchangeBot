@@ -1,5 +1,8 @@
 package ru.algotrade.service.impl;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.PropertySource;
+import org.springframework.stereotype.Service;
 import ru.algotrade.service.FakeBalance;
 
 import java.math.BigDecimal;
@@ -10,11 +13,16 @@ import java.util.TreeMap;
 
 import  static ru.algotrade.util.CalcUtils.*;
 
+@Service
+@PropertySource("classpath:settings.properties")
 public class FakeBalanceImpl implements FakeBalance {
+
+    @Value("${main_currency}")
+    private String mainCur;
     private Map<String, BigDecimal> accountFakeBalance;
     private int scale = 8;
 
-    FakeBalanceImpl(){
+    public FakeBalanceImpl(){
     }
 
     public void init(List<String> coins) {
@@ -59,28 +67,21 @@ public class FakeBalanceImpl implements FakeBalance {
     }
 
     @Override
-    public BigDecimal getAllBalanceInDollars(Map<String, BigDecimal> prices) {
+    public BigDecimal getAllBalanceInMainCur(Map<String, BigDecimal> prices) {
         BigDecimal sum = BigDecimal.ZERO;
         if (accountFakeBalance.size() > 0) {
             for (String coin : accountFakeBalance.keySet()) {
-                if(!coin.equals("USDT") && accountFakeBalance.get(coin).compareTo(BigDecimal.ZERO) > 0){
+                if(!coin.equals(mainCur) && accountFakeBalance.get(coin).compareTo(BigDecimal.ZERO) > 0){
                     for (String pair : prices.keySet()) {
-                        if (pair.contains(coin) && pair.contains("USDT")) {
+                        if (pair.contains(coin) && pair.contains(mainCur)) {
                             sum = add(sum, multiply(accountFakeBalance.get(coin), prices.get(pair)));
                             break;
                         }
                     }
                 }
             }
-            sum = add(sum, accountFakeBalance.get("USDT"));
+            sum = add(sum, accountFakeBalance.get(mainCur));
         }
-
-//        accountFakeBalance.entrySet().forEach(e -> {
-//            if(!e.getKey().equals("USDT") && !e.getKey().equals("BNB") && e.getValue().compareTo(BigDecimal.ZERO) > 0){
-//                System.out.println("123");
-//            }
-//        });
-
         return sum;
     }
 

@@ -8,9 +8,11 @@ import org.springframework.context.annotation.PropertySource;
 import ru.algotrade.mapping.TradePairBinanceMapper;
 import ru.algotrade.mapping.TradePairBinanceMapperImpl;
 import ru.algotrade.service.ExchangeService;
+import ru.algotrade.service.FakeBalance;
 import ru.algotrade.service.TradeOperation;
 import ru.algotrade.service.impl.BinanceTradeOperation;
 import ru.algotrade.service.impl.ExchangeServiceImpl;
+import ru.algotrade.service.impl.FakeBalanceImpl;
 
 @Configuration
 @PropertySource("classpath:settings.properties")
@@ -20,6 +22,11 @@ public class AppConfig {
 
     @Value("${secret_key}")
     String secretKey;
+
+    @Bean
+    FakeBalance fakeBalance(){
+        return new FakeBalanceImpl();
+    }
 
     @Bean
     TradeOperation tradeOperation(){
@@ -36,5 +43,4 @@ public class AppConfig {
     ExchangeService exchangeService(){
         return new ExchangeServiceImpl();
     }
-
 }

@@ -15,23 +15,24 @@ import com.binance.api.client.exception.BinanceApiException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.PropertySource;
 import org.springframework.stereotype.Service;
 import ru.algotrade.enums.TradeType;
 import ru.algotrade.mapping.TradePairBinanceMapper;
+import ru.algotrade.model.Fee;
 import ru.algotrade.model.PairTriangle;
 import ru.algotrade.model.TradePair;
 import ru.algotrade.service.TradeOperation;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
-import  static ru.algotrade.util.CalcUtils.*;
-import static ru.algotrade.util.CalcUtils.multiply;
+import static ru.algotrade.util.CalcUtils.*;
 
 @Service
-@PropertySource("classpath:settings.properties")
 public class BinanceTradeOperation implements TradeOperation {
 
     private static boolean NO_TRADE = false;
@@ -42,7 +43,9 @@ public class BinanceTradeOperation implements TradeOperation {
     private ExchangeInfo exchangeInfo;
     private List<TickerPrice> prices;
     private List<BookTicker> tradeBooks;
-    private boolean BNBFee;
+    private boolean isBNBFee;
+    private BigDecimal BNBFee;
+    private BigDecimal mainFee;
     private Logger logger = LoggerFactory.getLogger(BinanceTradeOperation.class);
 
     public BinanceTradeOperation(String apiKey, String secretKey){
@@ -52,7 +55,9 @@ public class BinanceTradeOperation implements TradeOperation {
         exchangeInfo = apiRestClient.getExchangeInfo();
         prices = apiRestClient.getAllPrices();
         tradeBooks = apiRestClient.getBookTickers();
-        BNBFee = true;
+        isBNBFee = true;
+        BNBFee = new BigDecimal("0.0005");
+        mainFee = new BigDecimal("0.001");
         startRefreshingPrices();
         startRefreshingTradeBook();
         startRefreshingExchangeInfo();
@@ -147,26 +152,24 @@ public class BinanceTradeOperation implements TradeOperation {
         else return null;
     }
 
-    private BigDecimal fee() {
-        if(BNBFee) return new BigDecimal("0.0005");
-        else return new BigDecimal("0.001");
-    }
-
     @Override
-    public BigDecimal getFee(String spentCurrency, BigDecimal spent) {
-        if(spentCurrency.equals("BNB")){
-            return multiply(spent, fee());
-        }
-        for (String pair : getAllPair()) {
-            if(getTradePairInfo(pair).getBaseAsset().equals(spentCurrency) && getTradePairInfo(pair).getQuoteAsset().equals("BNB")){
-                return multiply(spent, getTradePairInfo(pair).getMarketPrice(), fee());
+    public Fee getFee(String spentCurrency, BigDecimal spent) {
+        if(isBNBFee){
+            if(spentCurrency.equals("BNB")){
+                return new Fee(spentCurrency, multiply(spent, BNBFee));
             }
-            if(getTradePairInfo(pair).getQuoteAsset().equals(spentCurrency) && getTradePairInfo(pair).getBaseAsset().equals("BNB")){
-                return multiply(divide(spent, getTradePairInfo(pair).getMarketPrice()), fee());
+            for (String pair : getAllPair()) {
+                if(getTradePairInfo(pair).getBaseAsset().equals(spentCurrency) && getTradePairInfo(pair).getQuoteAsset().equals("BNB")){
+                    return new Fee("BNB", multiply(spent, getTradePairInfo(pair).getMarketPrice(), BNBFee));
+                }
+                if(getTradePairInfo(pair).getQuoteAsset().equals(spentCurrency) && getTradePairInfo(pair).getBaseAsset().equals("BNB")){
+                    return new Fee("BNB", multiply(divide(spent, getTradePairInfo(pair).getMarketPrice()), BNBFee));
+                }
             }
+            return new Fee("BNB", multiply(divide(multiply(spent, getTradePairInfo(spentCurrency.concat("BTC")).getMarketPrice()),
+                    getTradePairInfo("BNBBTC").getMarketPrice()), BNBFee));
         }
-        return multiply(divide(multiply(spent, getTradePairInfo(spentCurrency.concat("BTC")).getMarketPrice()),
-                getTradePairInfo("BNBBTC").getMarketPrice()), fee());
+        return new Fee(spentCurrency, multiply(spent, mainFee));
     }
 
     @Override
