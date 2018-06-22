@@ -83,7 +83,8 @@ public class BinanceTradeOperation implements TradeOperation {
             if (tradeList.size() > 0) {
                 Trade trade = tradeList.get(0);
                 if (trade.getOrderId().equals(orderResponse.getOrderId().toString())) {
-                    logger.debug("Buy " + pair + " - price: " + trade.getPrice() + ", qty: " + trade.getQty());
+                    logger.debug("Buy " + pair + "paid: " + multiply(trade.getPrice(), trade.getQty()) +  " buy: " +
+                            trade.getQty() + " by price: " + trade.getPrice() + " with commission: " + trade.getCommission() + " " + trade.getCommissionAsset());
                     return new BigDecimal(orderResponse.getExecutedQty());
                 } else return BigDecimal.ZERO;
             }
@@ -106,7 +107,7 @@ public class BinanceTradeOperation implements TradeOperation {
             if (tradeList.size() > 0) {
                 Trade trade = tradeList.get(0);
                 if (trade.getOrderId().equals(orderResponse.getOrderId().toString())) {
-                    logger.debug("Sell " + pair + " - price: " + trade.getPrice() + ", qty: " + trade.getQty() + ", total: " + multiply(trade.getPrice(), trade.getQty()));
+                    logger.debug("Sell " + pair + "paid: " + trade.getQty() + " buy: " + multiply(trade.getPrice(), trade.getQty()) + " by price: " + trade.getPrice() + " with commission: " + trade.getCommission() + " " + trade.getCommissionAsset());
                     return multiply(trade.getPrice(), trade.getQty());
                 } else return BigDecimal.ZERO;
             }

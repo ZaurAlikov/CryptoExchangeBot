@@ -42,11 +42,11 @@ public class ExchangeServiceImpl implements ExchangeService {
     private Logger logger = LoggerFactory.getLogger(ExchangeServiceImpl.class);
 
     public ExchangeServiceImpl() {
-        tradeType = TradeType.TEST;
+        tradeType = TradeType.TRADE;
         betMode = BetMode.CONSTANT;
         constBet = toBigDec("15");
         percentAmt = toBigDec("50");
-        bound = toBigDec("0.01");
+        bound = toBigDec("0.1");
     }
 
     @Override
@@ -76,7 +76,7 @@ public class ExchangeServiceImpl implements ExchangeService {
         BigDecimal afterBal = fakeBalance.getAllBalanceInMainCur(tradeOperation.getAllPrices());
         BigDecimal profit = subtract(divide(multiply(afterBal, toBigDec("100")), beforeBal), toBigDec("100"));
         boolean result = profit.compareTo(bound) >= 0;
-        if (result) logger.debug("Profit size: " + subtract(afterBal, beforeBal).toString() + " " + mainCur + " (" + profit + "%)" + triangle);
+        if (result) logger.debug("Profit size: " + subtract(afterBal, beforeBal).toString() + " " + mainCur + " (" + profit + "%) " + triangle);
         return result;
     }
 
