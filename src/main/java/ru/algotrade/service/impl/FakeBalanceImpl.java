@@ -1,5 +1,7 @@
 package ru.algotrade.service.impl;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.stereotype.Service;
@@ -21,6 +23,7 @@ public class FakeBalanceImpl implements FakeBalance {
     private String mainCur;
     private Map<String, BigDecimal> accountFakeBalance;
     private int scale = 8;
+    private Logger logger = LoggerFactory.getLogger(FakeBalanceImpl.class);
 
     public FakeBalanceImpl(){
     }
@@ -61,7 +64,7 @@ public class FakeBalanceImpl implements FakeBalance {
                 setBalanceBySymbol(symbol, normValue);
             } else {
                 setBalanceBySymbol(symbol, normValue);
-                System.err.println("Баланс по " + symbol + " отрицательный!");
+                logger.error(symbol + " balance is negative!");
             }
         }
     }

@@ -6,12 +6,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.stereotype.Service;
+import ru.algotrade.enums.BetMode;
 import ru.algotrade.enums.TradeType;
 import ru.algotrade.model.Fee;
 import ru.algotrade.model.PairTriangle;
 import ru.algotrade.service.ExchangeService;
 import ru.algotrade.service.FakeBalance;
 import ru.algotrade.service.TradeOperation;
+import ru.algotrade.service.impl.binance.BinanceTradeOperation;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -29,6 +31,10 @@ public class ExchangeServiceImpl implements ExchangeService {
 
     @Value("${main_currency}")
     private String mainCur;
+    private BetMode betMode;
+    private BigDecimal constBet;
+    private BigDecimal percentAmt;
+    private BigDecimal bound;
     private PairTriangle currentTriangle;
     private TradeType tradeType;
     private TradeOperation tradeOperation;
@@ -37,24 +43,25 @@ public class ExchangeServiceImpl implements ExchangeService {
 
     public ExchangeServiceImpl() {
         tradeType = TradeType.TEST;
+        betMode = BetMode.CONSTANT;
+        constBet = toBigDec("15");
+        percentAmt = toBigDec("50");
+        bound = toBigDec("0.01");
     }
 
     @Override
     public void startTrade() {
         fakeBalance.init(tradeOperation.getAllCoins());
-        BigDecimal initAmt = new BigDecimal("15");
-        BigDecimal bound = new BigDecimal("0.01");
+        BigDecimal initAmt;
         List<String> allPairs = tradeOperation.getAllPair();
         List<PairTriangle> triangles = getAllTriangles(allPairs);
         while (true) {
             for (PairTriangle triangle : triangles) {
-                Long t1 = System.currentTimeMillis();
+                initAmt = initBet();
                 fakeBalAmtInit(initAmt);
                 tradeOperation.setNoTrade(false);
                 if (isProfit(triangle, initAmt, bound) && !tradeOperation.isNoTrade()) {
                     trade(triangle, initAmt, mainCur, tradeType);
-                    long time = System.currentTimeMillis() - t1;
-                    logger.debug("Profit cycle execution time: " + time + " ms");
                 }
                 fakeBalance.resetBalance();
             }
@@ -65,9 +72,7 @@ public class ExchangeServiceImpl implements ExchangeService {
     public boolean isProfit(PairTriangle triangle, BigDecimal initAmt, BigDecimal bound) {
         BigDecimal beforeBal = fakeBalance.getAllBalanceInMainCur(tradeOperation.getAllPrices());
         trade(triangle, initAmt, mainCur, TradeType.PROFIT);
-        if (tradeOperation.isNoTrade()) {
-            return false;
-        }
+        if (tradeOperation.isNoTrade()) return false;
         BigDecimal afterBal = fakeBalance.getAllBalanceInMainCur(tradeOperation.getAllPrices());
         BigDecimal profit = subtract(divide(multiply(afterBal, toBigDec("100")), beforeBal), toBigDec("100"));
         boolean result = profit.compareTo(bound) >= 0;
@@ -84,16 +89,16 @@ public class ExchangeServiceImpl implements ExchangeService {
         String secondPair = triangle.getSecondPair();
         String thirdPair = triangle.getThirdPair();
         if (tradeOperation.isAllPairTrading(triangle)) {
-            requiredCurrency = getRequiredCurrency(firstPair, mainCur);
             PairTriangle.NUM_PAIR = 1;
+            requiredCurrency = getRequiredCurrency(firstPair, mainCur);
             resultAmt = newMarketOrder(firstPair, requiredCurrency, initAmt, tradeType);
-            requiredCurrency = getRequiredCurrency(secondPair, requiredCurrency);
             if (tradeOperation.isNoTrade()) return;
             PairTriangle.NUM_PAIR = 2;
+            requiredCurrency = getRequiredCurrency(secondPair, requiredCurrency);
             resultAmt = newMarketOrder(secondPair, requiredCurrency, resultAmt, tradeType);
-            requiredCurrency = getRequiredCurrency(thirdPair, requiredCurrency);
             if (tradeOperation.isNoTrade()) return;
             PairTriangle.NUM_PAIR = 3;
+            requiredCurrency = getRequiredCurrency(thirdPair, requiredCurrency);
             resultAmt = newMarketOrder(thirdPair, requiredCurrency, resultAmt, tradeType);
             if (tradeType == TradeType.TRADE) logger.debug("Trade result = " + resultAmt + " " + mainCur);
         } else logger.debug("Trade in one or more pairs is not allowed");
@@ -103,49 +108,47 @@ public class ExchangeServiceImpl implements ExchangeService {
         BigDecimal qty = preQty;
         String normalQty;
         BigDecimal resultAmt = BigDecimal.ZERO;
-        if (pair.contains(buyCoin)) {
-            if (isBaseCurrency(pair, buyCoin)) {
-                normalQty = tradeOperation.getQtyForBuy(pair, qty, currentTriangle);
-                if (normalQty != null) {
-                    if (PairTriangle.NUM_PAIR == 1)
-                        qty = multiply(tradeOperation.getTradePairInfo(pair).getAskPrice(), normalQty);
-                    switch (tradeType) {
-                        case TRADE:
-                            resultAmt = tradeOperation.marketBuy(pair, normalQty, TradeType.TRADE);
-                            break;
-                        case TEST:
-                            resultAmt = tradeOperation.marketBuy(pair, normalQty, TradeType.TEST);
-                            fakeBalanceFilling(getRequiredCurrency(pair, buyCoin), qty, buyCoin, toBigDec(normalQty));
-                            break;
-                        case PROFIT:
-                            resultAmt = tradeOperation.marketBuy(pair, normalQty, TradeType.PROFIT);
-                            if (tradeOperation.isNoTrade()) break;
-                            fakeBalanceFilling(getRequiredCurrency(pair, buyCoin), qty, buyCoin, toBigDec(normalQty));
-                            logger.trace("profit.buy " + PairTriangle.NUM_PAIR + " pair: " + pair + ", Qty: " + qty + ", normalQty: " + normalQty + ", получено: " + resultAmt + ", " + buyCoin + ", по askPrice: " + tradeOperation.getTradePairInfo(pair).getAskPrice());
-                            break;
-                    }
-                }
-            } else {
-                normalQty = tradeOperation.getQtyForSell(pair, qty, currentTriangle);
-                if (normalQty != null) {
-                    switch (tradeType) {
-                        case TRADE:
-                            resultAmt = tradeOperation.marketSell(pair, normalQty, TradeType.TRADE);
-                            break;
-                        case TEST:
-                            resultAmt = tradeOperation.marketSell(pair, normalQty, TradeType.TEST);
-                            fakeBalanceFilling(getRequiredCurrency(pair, buyCoin), toBigDec(normalQty), buyCoin, resultAmt);
-                            break;
-                        case PROFIT:
-                            resultAmt = tradeOperation.marketSell(pair, normalQty, TradeType.PROFIT);
-                            if (tradeOperation.isNoTrade()) break;
-                            fakeBalanceFilling(getRequiredCurrency(pair, buyCoin), toBigDec(normalQty), buyCoin, resultAmt);
-                            logger.trace("profit.sell " + PairTriangle.NUM_PAIR + " pair: " + pair + ", Qty: " + qty + ", normalQty: " + normalQty + ", получено: " + resultAmt + ", " + buyCoin + ", по bidPrice: " + tradeOperation.getTradePairInfo(pair).getBidPrice());
-                            break;
-                    }
+        if (isBaseCurrency(pair, buyCoin)) {
+            normalQty = tradeOperation.getQtyForBuy(pair, qty, currentTriangle);
+            if (normalQty != null) {
+                if (PairTriangle.NUM_PAIR == 1)
+                    qty = multiply(tradeOperation.getTradePairInfo(pair).getAskPrice(), normalQty);
+                switch (tradeType) {
+                    case TRADE:
+                        resultAmt = tradeOperation.marketBuy(pair, normalQty, TradeType.TRADE);
+                        break;
+                    case TEST:
+                        resultAmt = tradeOperation.marketBuy(pair, normalQty, TradeType.TEST);
+                        fakeBalanceFilling(getRequiredCurrency(pair, buyCoin), qty, buyCoin, toBigDec(normalQty));
+                        break;
+                    case PROFIT:
+                        resultAmt = tradeOperation.marketBuy(pair, normalQty, TradeType.PROFIT);
+                        if (tradeOperation.isNoTrade()) break;
+                        fakeBalanceFilling(getRequiredCurrency(pair, buyCoin), qty, buyCoin, toBigDec(normalQty));
+                        logger.trace("profit.buy " + PairTriangle.NUM_PAIR + " pair: " + pair + ", Qty: " + qty + ", normalQty: " + normalQty + ", получено: " + resultAmt + ", " + buyCoin + ", по askPrice: " + tradeOperation.getTradePairInfo(pair).getAskPrice());
+                        break;
                 }
             }
-        } else logger.debug("Pair don`t contain buyCoin");
+        } else {
+            normalQty = tradeOperation.getQtyForSell(pair, qty, currentTriangle);
+            if (normalQty != null) {
+                switch (tradeType) {
+                    case TRADE:
+                        resultAmt = tradeOperation.marketSell(pair, normalQty, TradeType.TRADE);
+                        break;
+                    case TEST:
+                        resultAmt = tradeOperation.marketSell(pair, normalQty, TradeType.TEST);
+                        fakeBalanceFilling(getRequiredCurrency(pair, buyCoin), toBigDec(normalQty), buyCoin, resultAmt);
+                        break;
+                    case PROFIT:
+                        resultAmt = tradeOperation.marketSell(pair, normalQty, TradeType.PROFIT);
+                        if (tradeOperation.isNoTrade()) break;
+                        fakeBalanceFilling(getRequiredCurrency(pair, buyCoin), toBigDec(normalQty), buyCoin, resultAmt);
+                        logger.trace("profit.sell " + PairTriangle.NUM_PAIR + " pair: " + pair + ", Qty: " + qty + ", normalQty: " + normalQty + ", получено: " + resultAmt + ", " + buyCoin + ", по bidPrice: " + tradeOperation.getTradePairInfo(pair).getBidPrice());
+                        break;
+                }
+            }
+        }
         return resultAmt;
     }
 
@@ -156,6 +159,18 @@ public class ExchangeServiceImpl implements ExchangeService {
         List<String> coins = pairsAndCoins.get("coins");
         List<String> secondPairs = getSecondPairs(coins, pairs);
         return getPairTriangles(firstPairs, secondPairs);
+    }
+
+    private BigDecimal initBet() {
+        if (betMode == BetMode.CONSTANT){
+            return constBet;
+        } else if (betMode == BetMode.PERCENT){
+            if (percentAmt.compareTo(toBigDec("1")) <= 0){
+                return multiply(tradeOperation.getBalance(mainCur), percentAmt);
+            }
+            else logger.error("The bid can not be more than 100%");
+        }
+        return BigDecimal.ZERO;
     }
 
     private void fakeBalanceFilling(String spentCurrency, BigDecimal spent, String boughtCurrency, BigDecimal bought) {

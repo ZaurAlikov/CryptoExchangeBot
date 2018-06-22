@@ -1,8 +1,9 @@
-package ru.algotrade.service.impl;
+package ru.algotrade.service.impl.binance;
 
 import com.binance.api.client.BinanceApiAsyncRestClient;
 import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiRestClient;
+import com.binance.api.client.domain.account.AssetBalance;
 import com.binance.api.client.domain.account.NewOrder;
 import com.binance.api.client.domain.account.NewOrderResponse;
 import com.binance.api.client.domain.account.Trade;
@@ -37,6 +38,7 @@ public class BinanceTradeOperation implements TradeOperation {
 
     private static boolean NO_TRADE = false;
 
+    private BalanceCacheImpl balanceCacheImpl;
     private TradePairBinanceMapper tradePairBinanceMapper;
     private BinanceApiRestClient apiRestClient;
     private BinanceApiAsyncRestClient apiAsyncRestClient;
@@ -56,8 +58,8 @@ public class BinanceTradeOperation implements TradeOperation {
         prices = apiRestClient.getAllPrices();
         tradeBooks = apiRestClient.getBookTickers();
         isBNBFee = true;
-        BNBFee = new BigDecimal("0.0005");
-        mainFee = new BigDecimal("0.001");
+        BNBFee = toBigDec("0.0005");
+        mainFee = toBigDec("0.001");
         startRefreshingPrices();
         startRefreshingTradeBook();
         startRefreshingExchangeInfo();
@@ -153,6 +155,12 @@ public class BinanceTradeOperation implements TradeOperation {
     }
 
     @Override
+    public BigDecimal getBalance(String currency) {
+        AssetBalance assetBalance = balanceCacheImpl.getAccountBalanceCache().get(currency);
+        return toBigDec(assetBalance.getFree());
+    }
+
+    @Override
     public Fee getFee(String spentCurrency, BigDecimal spent) {
         if(isBNBFee){
             if(spentCurrency.equals("BNB")){
@@ -174,9 +182,12 @@ public class BinanceTradeOperation implements TradeOperation {
 
     @Override
     public boolean isAllPairTrading(PairTriangle triangle) {
-        return getTradePairInfo(triangle.getFirstPair()).getTradeLimits().getStatus().equals(SymbolStatus.TRADING.name()) &&
-        getTradePairInfo(triangle.getSecondPair()).getTradeLimits().getStatus().equals(SymbolStatus.TRADING.name()) &&
-        getTradePairInfo(triangle.getFirstPair()).getTradeLimits().getStatus().equals(SymbolStatus.TRADING.name());
+        boolean result;
+        result = getTradePairInfo(triangle.getFirstPair()).getTradeLimits().getStatus().equals(SymbolStatus.TRADING.name()) &&
+                getTradePairInfo(triangle.getSecondPair()).getTradeLimits().getStatus().equals(SymbolStatus.TRADING.name()) &&
+                getTradePairInfo(triangle.getFirstPair()).getTradeLimits().getStatus().equals(SymbolStatus.TRADING.name());
+        if (!result) NO_TRADE = true;
+        return result;
     }
 
     @Override
@@ -349,5 +360,10 @@ public class BinanceTradeOperation implements TradeOperation {
     @Autowired
     public void setTradePairBinanceMapper(TradePairBinanceMapper tradePairBinanceMapper) {
         this.tradePairBinanceMapper = tradePairBinanceMapper;
+    }
+
+    @Autowired
+    public void setBalanceCacheImpl(BalanceCacheImpl balanceCacheImpl) {
+        this.balanceCacheImpl = balanceCacheImpl;
     }
 }

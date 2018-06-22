@@ -23,6 +23,8 @@ public interface TradeOperation {
 
     String getQtyForSell(String pair, BigDecimal amt, PairTriangle triangle);
 
+    BigDecimal getBalance(String currency);
+
     Fee getFee(String spentCurrency, BigDecimal spent);
 
     boolean isAllPairTrading(PairTriangle triangle);
@@ -38,4 +40,6 @@ public interface TradeOperation {
     boolean isNoTrade();
 
     void setNoTrade(boolean noTrade);
+
+
 }
