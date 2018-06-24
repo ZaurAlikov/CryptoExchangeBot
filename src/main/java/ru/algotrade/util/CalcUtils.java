@@ -9,6 +9,18 @@ public class CalcUtils {
         return new BigDecimal(value);
     }
 
+    public static BigDecimal toBigDec(int value) {
+        return new BigDecimal(value);
+    }
+
+    public static BigDecimal toBigDec(long value) {
+        return new BigDecimal(value);
+    }
+
+    public static BigDecimal toBigDec(double value) {
+        return new BigDecimal(value);
+    }
+
     public static BigDecimal multiply(String value1, String value2, String ... values) {
         BigDecimal result;
         result = new BigDecimal(value1).multiply(new BigDecimal(value2));

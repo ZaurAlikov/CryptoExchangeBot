@@ -3,10 +3,7 @@ package ru.algotrade.service.impl.binance;
 import com.binance.api.client.BinanceApiAsyncRestClient;
 import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiRestClient;
-import com.binance.api.client.domain.account.AssetBalance;
-import com.binance.api.client.domain.account.NewOrder;
-import com.binance.api.client.domain.account.NewOrderResponse;
-import com.binance.api.client.domain.account.Trade;
+import com.binance.api.client.domain.account.*;
 import com.binance.api.client.domain.general.ExchangeInfo;
 import com.binance.api.client.domain.general.SymbolInfo;
 import com.binance.api.client.domain.general.SymbolStatus;
@@ -26,10 +23,7 @@ import ru.algotrade.service.TradeOperation;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
 
 import static ru.algotrade.util.CalcUtils.*;
 
@@ -50,7 +44,7 @@ public class BinanceTradeOperation implements TradeOperation {
     private BigDecimal mainFee;
     private Logger logger = LoggerFactory.getLogger(BinanceTradeOperation.class);
 
-    public BinanceTradeOperation(String apiKey, String secretKey){
+    public BinanceTradeOperation(String apiKey, String secretKey) {
         BinanceApiClientFactory factory = BinanceApiClientFactory.newInstance(apiKey, secretKey);
         apiRestClient = factory.newRestClient();
         apiAsyncRestClient = factory.newAsyncRestClient();
@@ -77,81 +71,122 @@ public class BinanceTradeOperation implements TradeOperation {
 
     @Override
     public BigDecimal marketBuy(String pair, String qty, TradeType tradeType) {
-        if(tradeType == TradeType.TRADE){
-            NewOrderResponse orderResponse = apiRestClient.newOrder(NewOrder.marketBuy(pair, qty));
-            List<Trade> tradeList = apiRestClient.getMyTrades(pair, 1);
-            if (tradeList.size() > 0) {
-                Trade trade = tradeList.get(0);
-                if (trade.getOrderId().equals(orderResponse.getOrderId().toString())) {
-                    logger.debug("Buy " + pair + "paid: " + multiply(trade.getPrice(), trade.getQty()) +  " buy: " +
-                            trade.getQty() + " by price: " + trade.getPrice() + " with commission: " + trade.getCommission() + " " + trade.getCommissionAsset());
-                    return new BigDecimal(orderResponse.getExecutedQty());
-                } else return BigDecimal.ZERO;
-            }
-            logger.debug("Unsuccessful buy");
-            return BigDecimal.ZERO;
+        if (tradeType == TradeType.TRADE) {
+            NewOrderResponse orderResponse = apiRestClient.newOrder(NewOrder.marketBuy(pair, qty).newOrderRespType(NewOrderResponseType.FULL));
+            logger.debug("Buy " + pair + " paid: " + getSellResultFromOrderResponse(orderResponse) + " buy: " +
+                    orderResponse.getExecutedQty() + " by price: " + getAvgPriceFromOrderResponse(orderResponse) + " with commission: " +
+                    getAvgCommissionFromOrderResponse(orderResponse) + " " + orderResponse.getFills().get(0).getCommissionAsset());
+            return new BigDecimal(orderResponse.getExecutedQty());
+
+//            List<Trade> tradeList = apiRestClient.getMyTrades(pair, 1);
+//            if (tradeList.size() > 0) {
+//                Trade trade = tradeList.get(0);
+//                if (trade.getOrderId().equals(orderResponse.getOrderId().toString())) {
+//                    logger.debug("Buy " + pair + " paid: " + multiply(trade.getPrice(), trade.getQty()) + " buy: " +
+//                            trade.getQty() + " by price: " + trade.getPrice() + " with commission: " + trade.getCommission() + " " + trade.getCommissionAsset());
+//                } else printAltBuyLog(pair, orderResponse);
+//            } else printAltBuyLog(pair, orderResponse);
+
+//            getMyTradesInNewThread(pair, orderResponse);
+//            return new BigDecimal(orderResponse.getExecutedQty());
+
         } else if (tradeType == TradeType.TEST) {
             apiRestClient.newOrderTest(NewOrder.marketBuy(pair, qty));
             return toBigDec(qty);
-        } else if (tradeType == TradeType.PROFIT){
-            if(isNotional(toBigDec(qty), pair, "buy")) return toBigDec(qty);
+        } else if (tradeType == TradeType.PROFIT) {
+            if (isNotional(toBigDec(qty), pair, "buy")) {
+                return toBigDec(qty);
+            }
         }
         return BigDecimal.ZERO;
     }
+
+//    private void printAltBuyLog(String pair, NewOrderResponse orderResponse){
+//        logger.debug("Buy " + pair + " paid: " + multiply(getTradePairInfo(pair).getAskPrice(), orderResponse.getExecutedQty()) + " buy: " +
+//                orderResponse.getExecutedQty() + " by price: " + getTradePairInfo(pair).getAskPrice());
+//    }
 
     @Override
     public BigDecimal marketSell(String pair, String qty, TradeType tradeType) {
-        if(tradeType == TradeType.TRADE){
-            NewOrderResponse orderResponse = apiRestClient.newOrder(NewOrder.marketSell(pair, qty));
-            List<Trade> tradeList = apiRestClient.getMyTrades(pair, 1);
-            if (tradeList.size() > 0) {
-                Trade trade = tradeList.get(0);
-                if (trade.getOrderId().equals(orderResponse.getOrderId().toString())) {
-                    logger.debug("Sell " + pair + "paid: " + trade.getQty() + " buy: " + multiply(trade.getPrice(), trade.getQty()) + " by price: " + trade.getPrice() + " with commission: " + trade.getCommission() + " " + trade.getCommissionAsset());
-                    return multiply(trade.getPrice(), trade.getQty());
-                } else return BigDecimal.ZERO;
-            }
-            logger.debug("Unsuccessful sell");
-            return BigDecimal.ZERO;
+        if (tradeType == TradeType.TRADE) {
+            NewOrderResponse orderResponse = apiRestClient.newOrder(NewOrder.marketSell(pair, qty).newOrderRespType(NewOrderResponseType.FULL));
+            logger.debug("Sell " + pair + " paid: " + orderResponse.getExecutedQty() + " buy: " + getSellResultFromOrderResponse(orderResponse) + " by price: " +
+                    getAvgPriceFromOrderResponse(orderResponse) + " with commission: " + getAvgCommissionFromOrderResponse(orderResponse) + " " +
+                    orderResponse.getFills().get(0).getCommissionAsset());
+            return getSellResultFromOrderResponse(orderResponse);
+
+//            List<Trade> tradeList = apiRestClient.getMyTrades(pair, 1);
+//            if (tradeList.size() > 0) {
+//                Trade trade = tradeList.get(0);
+//                if (trade.getOrderId().equals(orderResponse.getOrderId().toString())) {
+//                    logger.debug("Sell " + pair + " paid: " + trade.getQty() + " buy: " + multiply(trade.getPrice(), trade.getQty()) + " by price: " + trade.getPrice() + " with commission: " + trade.getCommission() + " " + trade.getCommissionAsset());
+//                    return multiply(trade.getPrice(), trade.getQty());
+//                } else logger.debug("Trade with such id not found");
+//            } else logger.debug("Could not retrieve trade list");
+//            logger.debug("Unsuccessful sell");
+
         } else if (tradeType == TradeType.TEST) {
             apiRestClient.newOrderTest(NewOrder.marketSell(pair, qty));
             return multiply(getTradePairInfo(pair).getBidPrice(), qty);
-        } else if (tradeType == TradeType.PROFIT){
-            if(isNotional(toBigDec(qty), pair, "sell")) return multiply(getTradePairInfo(pair).getBidPrice(), qty);
+        } else if (tradeType == TradeType.PROFIT) {
+            if (isNotional(toBigDec(qty), pair, "sell")) return multiply(getTradePairInfo(pair).getBidPrice(), qty);
         }
         return BigDecimal.ZERO;
     }
 
-    @Override
-    public String getQtyForBuy(String pair, BigDecimal amt, PairTriangle triangle) {
-        BigDecimal normalQty = normalizeQuantity(pair, divide(amt, getTradePairInfo(pair).getAskPrice()));
-        if (PairTriangle.NUM_PAIR == 1){
-            if (getTradePairInfo(triangle.getFirstPair()).getTradeLimits().getStepSize()
-                    .compareTo(getTradePairInfo(triangle.getSecondPair()).getTradeLimits().getStepSize()) < 0){
-                normalQty = normalQty.setScale(getTradePairInfo(triangle.getSecondPair()).getTradeLimits().getStepSize().stripTrailingZeros().scale(), RoundingMode.DOWN);
+    private BigDecimal getAvgPriceFromOrderResponse(NewOrderResponse orderResponse) {
+        OptionalDouble average = orderResponse.getFills().stream().mapToDouble(s -> Double.valueOf(s.getPrice())).average();
+        return toBigDec(average.getAsDouble()).setScale(8, RoundingMode.DOWN);
+    }
 
+    private BigDecimal getAvgCommissionFromOrderResponse(NewOrderResponse orderResponse) {
+        OptionalDouble average = orderResponse.getFills().stream().mapToDouble(s -> Double.valueOf(s.getCommission())).average();
+        return toBigDec(average.getAsDouble()).setScale(8, RoundingMode.DOWN);
+    }
+
+    private BigDecimal getSellResultFromOrderResponse(NewOrderResponse orderResponse) {
+        BigDecimal sum = BigDecimal.ZERO;
+        for (Trade trade : orderResponse.getFills()) {
+            sum = add(sum, multiply(trade.getPrice(), trade.getQty()));
+        }
+        return divide(sum, toBigDec(orderResponse.getFills().size())).setScale(8, RoundingMode.DOWN);
+    }
+
+    @Override
+    public String getQtyForBuy(String pair, BigDecimal amt, PairTriangle triangle, TradeType tradeType) {
+        BigDecimal normalQty = normalizeQuantity(pair, divide(amt, getTradePairInfo(pair).getAskPrice()));
+        if (PairTriangle.NUM_PAIR == 1) {
+            if (getTradePairInfo(triangle.getFirstPair()).getTradeLimits().getStepSize()
+                    .compareTo(getTradePairInfo(triangle.getSecondPair()).getTradeLimits().getStepSize()) < 0) {
+                normalQty = normalQty.setScale(getTradePairInfo(triangle.getSecondPair()).getTradeLimits().getStepSize().stripTrailingZeros().scale(), RoundingMode.DOWN);
             }
         }
-        if (PairTriangle.NUM_PAIR == 2){
+        if (PairTriangle.NUM_PAIR == 2 && tradeType != TradeType.TRADE) {
             if (getTradePairInfo(triangle.getSecondPair()).getTradeLimits().getStepSize()
-                    .compareTo(getTradePairInfo(triangle.getThirdPair()).getTradeLimits().getStepSize()) < 0){
+                    .compareTo(getTradePairInfo(triangle.getThirdPair()).getTradeLimits().getStepSize()) < 0) {
                 NO_TRADE = true;
             }
         }
-        if(isValidQty(pair, normalQty)) return normalQty.toString();
+        if (isValidQty(pair, normalQty)) return normalQty.toString();
         else return null;
     }
 
     @Override
-    public String getQtyForSell(String pair, BigDecimal amt, PairTriangle triangle) {
+    public String getQtyForSell(String pair, BigDecimal amt, PairTriangle triangle, TradeType tradeType) {
         BigDecimal normalQty = normalizeQuantity(pair, amt);
-        if (PairTriangle.NUM_PAIR == 3){
+        if (PairTriangle.NUM_PAIR == 2 && tradeType != TradeType.TRADE) {
             if (getTradePairInfo(triangle.getThirdPair()).getTradeLimits().getStepSize().stripTrailingZeros().scale() <
-                    amt.stripTrailingZeros().scale()){
+                    multiply(amt, getTradePairInfo(pair).getBidPrice()).stripTrailingZeros().scale()) {
                 NO_TRADE = true;
             }
         }
-        if(isValidQty(pair, normalQty)) return normalQty.toString();
+        if (PairTriangle.NUM_PAIR == 3 && tradeType != TradeType.TRADE) {
+            if (getTradePairInfo(triangle.getThirdPair()).getTradeLimits().getStepSize().stripTrailingZeros().scale() <
+                    amt.stripTrailingZeros().scale()) {
+                NO_TRADE = true;
+            }
+        }
+        if (isValidQty(pair, normalQty)) return normalQty.toString();
         else return null;
     }
 
@@ -163,15 +198,15 @@ public class BinanceTradeOperation implements TradeOperation {
 
     @Override
     public Fee getFee(String spentCurrency, BigDecimal spent) {
-        if(isBNBFee){
-            if(spentCurrency.equals("BNB")){
+        if (isBNBFee) {
+            if (spentCurrency.equals("BNB")) {
                 return new Fee(spentCurrency, multiply(spent, BNBFee));
             }
             for (String pair : getAllPair()) {
-                if(getTradePairInfo(pair).getBaseAsset().equals(spentCurrency) && getTradePairInfo(pair).getQuoteAsset().equals("BNB")){
+                if (getTradePairInfo(pair).getBaseAsset().equals(spentCurrency) && getTradePairInfo(pair).getQuoteAsset().equals("BNB")) {
                     return new Fee("BNB", multiply(spent, getTradePairInfo(pair).getMarketPrice(), BNBFee));
                 }
-                if(getTradePairInfo(pair).getQuoteAsset().equals(spentCurrency) && getTradePairInfo(pair).getBaseAsset().equals("BNB")){
+                if (getTradePairInfo(pair).getQuoteAsset().equals(spentCurrency) && getTradePairInfo(pair).getBaseAsset().equals("BNB")) {
                     return new Fee("BNB", multiply(divide(spent, getTradePairInfo(pair).getMarketPrice()), BNBFee));
                 }
             }
@@ -202,7 +237,7 @@ public class BinanceTradeOperation implements TradeOperation {
     @Override
     public List<String> getAllPair() {
         List<String> allPairs = new ArrayList<>();
-        for (SymbolInfo symbolInfo : exchangeInfo.getSymbols()){
+        for (SymbolInfo symbolInfo : exchangeInfo.getSymbols()) {
             allPairs.add(symbolInfo.getSymbol());
         }
         return allPairs;
@@ -213,7 +248,7 @@ public class BinanceTradeOperation implements TradeOperation {
         List<String> allCoins = new ArrayList<>();
         String baseAsset;
         String quoteAsset;
-        for (SymbolInfo symbolInfo : exchangeInfo.getSymbols()){
+        for (SymbolInfo symbolInfo : exchangeInfo.getSymbols()) {
             baseAsset = symbolInfo.getBaseAsset();
             quoteAsset = symbolInfo.getQuoteAsset();
             if (!allCoins.contains(baseAsset)) allCoins.add(baseAsset);
@@ -225,7 +260,7 @@ public class BinanceTradeOperation implements TradeOperation {
     @Override
     public Map<String, BigDecimal> getAllPrices() {
         Map<String, BigDecimal> allPrices = new TreeMap<>();
-        for (TickerPrice tickerPrice : prices){
+        for (TickerPrice tickerPrice : prices) {
             allPrices.put(tickerPrice.getSymbol(), new BigDecimal(tickerPrice.getPrice()));
         }
         return allPrices;
@@ -258,10 +293,10 @@ public class BinanceTradeOperation implements TradeOperation {
 
     private boolean isNotional(BigDecimal qty, String pair, String buyOrSell) {
         boolean result = false;
-        if(buyOrSell.equals("buy")){
+        if (buyOrSell.equals("buy")) {
             result = multiply(qty, getTradePairInfo(pair).getAskPrice()).compareTo(getTradePairInfo(pair).getTradeLimits().getMinNotional()) >= 0;
         }
-        if(buyOrSell.equals("sell")){
+        if (buyOrSell.equals("sell")) {
             result = multiply(qty, getTradePairInfo(pair).getBidPrice()).compareTo(getTradePairInfo(pair).getTradeLimits().getMinNotional()) >= 0;
         }
         if (!result) NO_TRADE = true;
@@ -357,6 +392,19 @@ public class BinanceTradeOperation implements TradeOperation {
             }
         }).start();
     }
+
+//    private void getMyTradesInNewThread(String pair, NewOrderResponse orderResponse) {
+//        new Thread(() -> {
+//            List<Trade> tradeList = apiRestClient.getMyTrades(pair, 1);
+//            if (tradeList.size() > 0) {
+//                Trade trade = tradeList.get(0);
+//                if (trade.getOrderId().equals(orderResponse.getOrderId().toString())) {
+//                    logger.debug("Buy " + pair + " paid: " + multiply(trade.getPrice(), trade.getQty()) + " buy: " +
+//                            trade.getQty() + " by price: " + trade.getPrice() + " with commission: " + trade.getCommission() + " " + trade.getCommissionAsset());
+//                } else logger.debug("Trade with such id not found");
+//            } else logger.debug("Could not retrieve trade list");
+//        }).start();
+//    }
 
     @Autowired
     public void setTradePairBinanceMapper(TradePairBinanceMapper tradePairBinanceMapper) {

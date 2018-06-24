@@ -16,10 +16,9 @@ import ru.algotrade.service.TradeOperation;
 import ru.algotrade.service.impl.binance.BinanceTradeOperation;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
+import java.math.RoundingMode;
+import java.util.*;
+import java.util.stream.Stream;
 
 import static ru.algotrade.util.CalcUtils.*;
 import static ru.algotrade.util.Utils.getRequiredCurrency;
@@ -46,7 +45,7 @@ public class ExchangeServiceImpl implements ExchangeService {
         betMode = BetMode.CONSTANT;
         constBet = toBigDec("15");
         percentAmt = toBigDec("50");
-        bound = toBigDec("0.1");
+        bound = toBigDec("0.2");
     }
 
     @Override
@@ -55,6 +54,7 @@ public class ExchangeServiceImpl implements ExchangeService {
         BigDecimal initAmt;
         List<String> allPairs = tradeOperation.getAllPair();
         List<PairTriangle> triangles = getAllTriangles(allPairs);
+
         while (true) {
             for (PairTriangle triangle : triangles) {
                 initAmt = initBet();
@@ -62,6 +62,7 @@ public class ExchangeServiceImpl implements ExchangeService {
                 tradeOperation.setNoTrade(false);
                 if (isProfit(triangle, initAmt, bound) && !tradeOperation.isNoTrade()) {
                     trade(triangle, initAmt, mainCur, tradeType);
+//                    int i = 2;
                 }
                 fakeBalance.resetBalance();
             }
@@ -88,6 +89,11 @@ public class ExchangeServiceImpl implements ExchangeService {
         String firstPair = triangle.getFirstPair();
         String secondPair = triangle.getSecondPair();
         String thirdPair = triangle.getThirdPair();
+
+//        if (triangle.getFirstPair().equals("ETCUSDT") && triangle.getSecondPair().equals("ETCBTC") && triangle.getThirdPair().equals("BTCUSDT")){
+//            System.out.println("asdas");
+//        }
+
         if (tradeOperation.isAllPairTrading(triangle)) {
             PairTriangle.NUM_PAIR = 1;
             requiredCurrency = getRequiredCurrency(firstPair, mainCur);
@@ -109,7 +115,7 @@ public class ExchangeServiceImpl implements ExchangeService {
         String normalQty;
         BigDecimal resultAmt = BigDecimal.ZERO;
         if (isBaseCurrency(pair, buyCoin)) {
-            normalQty = tradeOperation.getQtyForBuy(pair, qty, currentTriangle);
+            normalQty = tradeOperation.getQtyForBuy(pair, qty, currentTriangle, tradeType);
             if (normalQty != null) {
                 if (PairTriangle.NUM_PAIR == 1)
                     qty = multiply(tradeOperation.getTradePairInfo(pair).getAskPrice(), normalQty);
@@ -130,7 +136,7 @@ public class ExchangeServiceImpl implements ExchangeService {
                 }
             }
         } else {
-            normalQty = tradeOperation.getQtyForSell(pair, qty, currentTriangle);
+            normalQty = tradeOperation.getQtyForSell(pair, qty, currentTriangle, tradeType);
             if (normalQty != null) {
                 switch (tradeType) {
                     case TRADE:
