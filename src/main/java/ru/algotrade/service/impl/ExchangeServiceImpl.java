@@ -1,5 +1,6 @@
 package ru.algotrade.service.impl;
 
+import com.binance.api.client.domain.account.Trade;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,7 +19,6 @@ import ru.algotrade.service.impl.binance.BinanceTradeOperation;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.*;
-import java.util.stream.Stream;
 
 import static ru.algotrade.util.CalcUtils.*;
 import static ru.algotrade.util.Utils.getRequiredCurrency;
@@ -41,7 +41,7 @@ public class ExchangeServiceImpl implements ExchangeService {
     private Logger logger = LoggerFactory.getLogger(ExchangeServiceImpl.class);
 
     public ExchangeServiceImpl() {
-        tradeType = TradeType.TRADE;
+        tradeType = TradeType.TEST;
         betMode = BetMode.CONSTANT;
         constBet = toBigDec("15");
         percentAmt = toBigDec("50");
@@ -57,12 +57,13 @@ public class ExchangeServiceImpl implements ExchangeService {
 
         while (true) {
             for (PairTriangle triangle : triangles) {
+                long t1 = System.currentTimeMillis();
                 initAmt = initBet();
                 fakeBalAmtInit(initAmt);
                 tradeOperation.setNoTrade(false);
                 if (isProfit(triangle, initAmt, bound) && !tradeOperation.isNoTrade()) {
                     trade(triangle, initAmt, mainCur, tradeType);
-//                    int i = 2;
+                    logger.debug(String.valueOf(System.currentTimeMillis() - t1));
                 }
                 fakeBalance.resetBalance();
             }

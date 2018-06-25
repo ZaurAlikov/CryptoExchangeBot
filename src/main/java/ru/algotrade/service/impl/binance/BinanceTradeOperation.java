@@ -149,7 +149,8 @@ public class BinanceTradeOperation implements TradeOperation {
         for (Trade trade : orderResponse.getFills()) {
             sum = add(sum, multiply(trade.getPrice(), trade.getQty()));
         }
-        return divide(sum, toBigDec(orderResponse.getFills().size())).setScale(8, RoundingMode.DOWN);
+        sum = sum.setScale(8, RoundingMode.DOWN);
+        return sum;
     }
 
     @Override
