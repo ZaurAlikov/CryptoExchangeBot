@@ -1,6 +1,7 @@
 package ru.algotrade.model;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 public class Fee {
 
@@ -10,7 +11,7 @@ public class Fee {
 
     public Fee(String simbol, BigDecimal fee) {
         this.simbol = simbol;
-        this.fee = fee;
+        this.fee = fee.setScale(8, RoundingMode.DOWN);;
     }
 
     public String getSimbol() {
@@ -26,7 +27,7 @@ public class Fee {
     }
 
     public void setFee(BigDecimal fee) {
-        this.fee = fee;
+        this.fee = fee.setScale(8, RoundingMode.DOWN);;
     }
 
     @Override

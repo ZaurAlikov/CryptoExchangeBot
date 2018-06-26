@@ -18,7 +18,8 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
-import static ru.algotrade.util.CalcUtils.*;
+import static ru.algotrade.util.CalcUtils.multiply;
+import static ru.algotrade.util.CalcUtils.toBigDec;
 
 public class BittrexTradeOperation implements TradeOperation {
 

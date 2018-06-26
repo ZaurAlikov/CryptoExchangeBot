@@ -94,7 +94,7 @@ public class BinanceTradeOperation implements TradeOperation {
             apiRestClient.newOrderTest(NewOrder.marketBuy(pair, qty));
             return toBigDec(qty);
         } else if (tradeType == TradeType.PROFIT) {
-            if (isNotional(toBigDec(qty), pair, "buy")) {
+            if (isNotional(toBigDec(qty), pair, "buy") && isEnoughQty(toBigDec(qty), pair, "buy")) {
                 return toBigDec(qty);
             }
         }
@@ -129,7 +129,9 @@ public class BinanceTradeOperation implements TradeOperation {
             apiRestClient.newOrderTest(NewOrder.marketSell(pair, qty));
             return multiply(getTradePairInfo(pair).getBidPrice(), qty);
         } else if (tradeType == TradeType.PROFIT) {
-            if (isNotional(toBigDec(qty), pair, "sell")) return multiply(getTradePairInfo(pair).getBidPrice(), qty);
+            if (isNotional(toBigDec(qty), pair, "sell") && isEnoughQty(toBigDec(qty), pair, "sell")){
+                return multiply(getTradePairInfo(pair).getBidPrice(), qty);
+            }
         }
         return BigDecimal.ZERO;
     }
@@ -299,6 +301,18 @@ public class BinanceTradeOperation implements TradeOperation {
         }
         if (buyOrSell.equals("sell")) {
             result = multiply(qty, getTradePairInfo(pair).getBidPrice()).compareTo(getTradePairInfo(pair).getTradeLimits().getMinNotional()) >= 0;
+        }
+        if (!result) NO_TRADE = true;
+        return result;
+    }
+
+    private boolean isEnoughQty(BigDecimal qty, String pair, String buyOrSell) {
+        boolean result = false;
+        if (buyOrSell.equals("buy") && getTradePairInfo(pair).getAskQty().compareTo(qty) >= 0) {
+            result = true;
+        }
+        if (buyOrSell.equals("sell") && getTradePairInfo(pair).getBidQty().compareTo(qty) >= 0) {
+            result = true;
         }
         if (!result) NO_TRADE = true;
         return result;

@@ -1,6 +1,5 @@
 package ru.algotrade.service.impl;
 
-import com.binance.api.client.domain.account.Trade;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,13 +10,13 @@ import ru.algotrade.enums.BetMode;
 import ru.algotrade.enums.TradeType;
 import ru.algotrade.model.Fee;
 import ru.algotrade.model.PairTriangle;
+import ru.algotrade.model.ProfitInfo;
 import ru.algotrade.service.ExchangeService;
 import ru.algotrade.service.FakeBalance;
 import ru.algotrade.service.TradeOperation;
 import ru.algotrade.service.impl.binance.BinanceTradeOperation;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.*;
 
 import static ru.algotrade.util.CalcUtils.*;
@@ -38,14 +37,16 @@ public class ExchangeServiceImpl implements ExchangeService {
     private TradeType tradeType;
     private TradeOperation tradeOperation;
     private FakeBalance fakeBalance;
+    private Map <Integer, ProfitInfo> profitInfoMap;
     private Logger logger = LoggerFactory.getLogger(ExchangeServiceImpl.class);
 
     public ExchangeServiceImpl() {
         tradeType = TradeType.TEST;
         betMode = BetMode.CONSTANT;
+        profitInfoMap = new HashMap<>();
         constBet = toBigDec("15");
         percentAmt = toBigDec("50");
-        bound = toBigDec("0.2");
+        bound = toBigDec("0.0001");
     }
 
     @Override
@@ -63,6 +64,9 @@ public class ExchangeServiceImpl implements ExchangeService {
                 tradeOperation.setNoTrade(false);
                 if (isProfit(triangle, initAmt, bound) && !tradeOperation.isNoTrade()) {
                     trade(triangle, initAmt, mainCur, tradeType);
+                    logger.debug(profitInfoMap.get(1).toString());
+                    logger.debug(profitInfoMap.get(2).toString());
+                    logger.debug(profitInfoMap.get(3).toString());
                     logger.debug(String.valueOf(System.currentTimeMillis() - t1));
                 }
                 fakeBalance.resetBalance();
@@ -185,6 +189,8 @@ public class ExchangeServiceImpl implements ExchangeService {
         fakeBalance.addBalanceBySymbol(boughtCurrency, bought);
         Fee fee = tradeOperation.getFee(spentCurrency, spent);
         fakeBalance.reduceBalanceBySymbol(fee.getSimbol(), fee.getFee());
+        ProfitInfo profitInfo = new ProfitInfo(spentCurrency, boughtCurrency, spent, bought, fee);
+        profitInfoMap.put(PairTriangle.NUM_PAIR, profitInfo);
     }
 
     private void fakeBalAmtInit(BigDecimal initAmt) {
