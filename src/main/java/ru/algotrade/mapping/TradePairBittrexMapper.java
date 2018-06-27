@@ -20,14 +20,14 @@ public interface TradePairBittrexMapper {
             @Mapping(target = "marketPrice", source = "marketSummary.last"),
             @Mapping(target = "tradeLimits", expression = "java(new ru.algotrade.model.TradeLimits(" +
                     "market.marketName," +
-                    "symbolInfo.getStatus().name()," +
-                    "symbolInfo.getFilters().get(0).getMinPrice()," +
-                    "market.minTradeSize," +
-                    "symbolInfo.getFilters().get(0).getTickSize()," +
+                    "String.valueOf(market.getIsActive())," +
+                    "0," +
+                    "0," +
+                    "0," +
                     "symbolInfo.getFilters().get(1).getMinQty()," +
                     "symbolInfo.getFilters().get(1).getMaxQty()," +
                     "symbolInfo.getFilters().get(1).getStepSize()," +
-                    "symbolInfo.getFilters().get(2).getMinNotional()))")
+                    "0))")
     })
     TradePair toTradePair(Market market, MarketSummary marketSummary);
 }
