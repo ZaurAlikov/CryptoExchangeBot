@@ -9,7 +9,11 @@ public class ProfitInfo {
     private String buyCur;
     private BigDecimal sellAmt;
     private BigDecimal buyAmt;
+    private BigDecimal totalProfit;
+    private BigDecimal mainCurProfit;
     private Fee fee;
+
+    public ProfitInfo(){}
 
     public ProfitInfo(String sellCur, String buyCur, BigDecimal sellAmt, BigDecimal buyAmt, Fee fee) {
         this.sellCur = sellCur;
@@ -49,6 +53,22 @@ public class ProfitInfo {
 
     public void setBuyAmt(BigDecimal buyAmt) {
         this.buyAmt = buyAmt.setScale(8, RoundingMode.DOWN);
+    }
+
+    public BigDecimal getTotalProfit() {
+        return totalProfit;
+    }
+
+    public void setTotalProfit(BigDecimal totalProfit) {
+        this.totalProfit = totalProfit;
+    }
+
+    public BigDecimal getMainCurProfit() {
+        return mainCurProfit;
+    }
+
+    public void setMainCurProfit(BigDecimal mainCurProfit) {
+        this.mainCurProfit = mainCurProfit;
     }
 
     public Fee getFee() {

@@ -11,10 +11,10 @@ import ru.algotrade.service.BalanceCache;
 import ru.algotrade.service.ExchangeService;
 import ru.algotrade.service.FakeBalance;
 import ru.algotrade.service.TradeOperation;
-import ru.algotrade.service.impl.binance.BalanceCacheImpl;
-import ru.algotrade.service.impl.binance.BinanceTradeOperation;
 import ru.algotrade.service.impl.ExchangeServiceImpl;
 import ru.algotrade.service.impl.FakeBalanceImpl;
+import ru.algotrade.service.impl.binance.BalanceCacheImpl;
+import ru.algotrade.service.impl.binance.BinanceTradeOperation;
 
 @Configuration
 @PropertySource("classpath:settings.properties")
@@ -47,7 +47,7 @@ public class AppConfig {
     }
 
     @Bean
-    @DependsOn("tradeOperation")
+    @DependsOn({"tradeOperation"})
     ExchangeService exchangeService(){
         return new ExchangeServiceImpl();
     }

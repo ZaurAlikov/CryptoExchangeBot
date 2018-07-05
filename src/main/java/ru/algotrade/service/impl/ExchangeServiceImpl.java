@@ -1,5 +1,7 @@
 package ru.algotrade.service.impl;
 
+import com.petersamokhin.bots.sdk.clients.Group;
+import com.petersamokhin.bots.sdk.objects.Message;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,10 +18,12 @@ import ru.algotrade.service.FakeBalance;
 import ru.algotrade.service.TradeOperation;
 import ru.algotrade.service.impl.binance.BinanceTradeOperation;
 
+import javax.annotation.PostConstruct;
 import java.math.BigDecimal;
 import java.util.*;
 
 import static ru.algotrade.util.CalcUtils.*;
+import static ru.algotrade.util.MathUtils.ema;
 import static ru.algotrade.util.Utils.getRequiredCurrency;
 import static ru.algotrade.util.Utils.isBaseCurrency;
 
@@ -29,6 +33,8 @@ public class ExchangeServiceImpl implements ExchangeService {
 
     @Value("${main_currency}")
     private String mainCur;
+    @Value("${vk_token}")
+    private String vkToken;
     private BetMode betMode;
     private BigDecimal constBet;
     private BigDecimal percentAmt;
@@ -37,8 +43,15 @@ public class ExchangeServiceImpl implements ExchangeService {
     private TradeType tradeType;
     private TradeOperation tradeOperation;
     private FakeBalance fakeBalance;
+    private ProfitInfo profitInfo;
+    private Group group;
     private Map <Integer, ProfitInfo> profitInfoMap;
     private Logger logger = LoggerFactory.getLogger(ExchangeServiceImpl.class);
+
+    @PostConstruct
+    private void init(){
+        group = new Group(40542602, vkToken);
+    }
 
     public ExchangeServiceImpl() {
         tradeType = TradeType.TEST;
@@ -46,43 +59,65 @@ public class ExchangeServiceImpl implements ExchangeService {
         profitInfoMap = new HashMap<>();
         constBet = toBigDec("15");
         percentAmt = toBigDec("50");
-        bound = toBigDec("0.0001");
+        bound = toBigDec("0.1");
     }
 
     @Override
     public void startTrade() {
-        fakeBalance.init(tradeOperation.getAllCoins());
-        BigDecimal initAmt;
-        List<String> allPairs = tradeOperation.getAllPair();
-        List<PairTriangle> triangles = getAllTriangles(allPairs);
+        BigDecimal[] decimal = {toBigDec("9040.49"), toBigDec("9079"),
+                toBigDec("9055"), toBigDec("9050.5"), toBigDec("9049.98"), toBigDec("9058.01")};
+        System.out.println(ema(decimal, toBigDec("8979.5"), 5));
 
-        while (true) {
-            for (PairTriangle triangle : triangles) {
-                long t1 = System.currentTimeMillis();
-                initAmt = initBet();
-                fakeBalAmtInit(initAmt);
-                tradeOperation.setNoTrade(false);
-                if (isProfit(triangle, initAmt, bound) && !tradeOperation.isNoTrade()) {
-                    trade(triangle, initAmt, mainCur, tradeType);
-                    logger.debug(profitInfoMap.get(1).toString());
-                    logger.debug(profitInfoMap.get(2).toString());
-                    logger.debug(profitInfoMap.get(3).toString());
-                    logger.debug(String.valueOf(System.currentTimeMillis() - t1));
-                }
-                fakeBalance.resetBalance();
-            }
-        }
+
+//        fakeBalance.init(tradeOperation.getAllCoins());
+//        BigDecimal initAmt;
+//        List<String> allPairs = tradeOperation.getAllPair();
+//        List<PairTriangle> triangles = getAllTriangles(allPairs);
+//
+//        while (true) {
+//            for (PairTriangle triangle : triangles) {
+////                long t1 = System.currentTimeMillis();
+//                initAmt = initBet();
+//                fakeBalAmtInit(initAmt);
+//                tradeOperation.setNoTrade(false);
+//                if (isProfit(triangle, initAmt, bound) && !tradeOperation.isNoTrade()) {
+//                    trade(triangle, initAmt, mainCur, tradeType);
+//                    logger.debug(profitInfoMap.get(1).toString());
+//                    logger.debug(profitInfoMap.get(2).toString());
+//                    logger.debug(profitInfoMap.get(3).toString());
+////                    logger.debug("Profit in " + mainCur + ": " + profitInfo.getMainCurProfit().toString());
+////                    logger.debug("Total profit: " + profitInfo.getTotalProfit().toString());
+//
+//                    String message = profitInfoMap.get(1).toString() + '\n' +
+//                            profitInfoMap.get(2).toString() + '\n' +
+//                            profitInfoMap.get(3).toString() + '\n' +
+//                            "Profit in " + mainCur + ": " + profitInfo.getMainCurProfit().toString() + '\n' +
+//                            "Total profit: " + profitInfo.getTotalProfit().toString();
+//                    vkBot(message);
+////                    logger.debug(message);
+////                    logger.debug(String.valueOf(System.currentTimeMillis() - t1));
+//                }
+//                fakeBalance.resetBalance();
+//            }
+//        }
     }
 
     @Override
     public boolean isProfit(PairTriangle triangle, BigDecimal initAmt, BigDecimal bound) {
-        BigDecimal beforeBal = fakeBalance.getAllBalanceInMainCur(tradeOperation.getAllPrices());
+        BigDecimal beforeTotalBal = fakeBalance.getAllBalanceInMainCur(tradeOperation.getAllPrices());
+        BigDecimal beforeBal = fakeBalance.getBalanceBySymbol(mainCur);
         trade(triangle, initAmt, mainCur, TradeType.PROFIT);
         if (tradeOperation.isNoTrade()) return false;
-        BigDecimal afterBal = fakeBalance.getAllBalanceInMainCur(tradeOperation.getAllPrices());
+        BigDecimal afterTotalBal = fakeBalance.getAllBalanceInMainCur(tradeOperation.getAllPrices());
+        BigDecimal afterBal = fakeBalance.getBalanceBySymbol(mainCur);
+        BigDecimal totalProfit = subtract(divide(multiply(afterTotalBal, toBigDec("100")), beforeTotalBal), toBigDec("100"));
         BigDecimal profit = subtract(divide(multiply(afterBal, toBigDec("100")), beforeBal), toBigDec("100"));
-        boolean result = profit.compareTo(bound) >= 0;
-        if (result) logger.debug("Profit size: " + subtract(afterBal, beforeBal).toString() + " " + mainCur + " (" + profit + "%) " + triangle);
+        fillProfitInfo(totalProfit, profit);
+        boolean result = totalProfit.compareTo(bound) >= 0;
+        if (result){
+            logger.debug("Profit in USDT: " + subtract(afterBal, beforeBal).toString() + " " + mainCur + " (" + profit + "%) " + triangle);
+            logger.debug("Total profit: " + subtract(afterTotalBal, beforeTotalBal).toString() + " " + mainCur + " (" + totalProfit + "%) " + triangle);
+        }
         return result;
     }
 
@@ -95,8 +130,8 @@ public class ExchangeServiceImpl implements ExchangeService {
         String secondPair = triangle.getSecondPair();
         String thirdPair = triangle.getThirdPair();
 
-//        if (triangle.getFirstPair().equals("ETCUSDT") && triangle.getSecondPair().equals("ETCBTC") && triangle.getThirdPair().equals("BTCUSDT")){
-//            System.out.println("asdas");
+//        if (triangle.getFirstPair().equals("ADAUSDT") && triangle.getSecondPair().equals("ADABTC") && triangle.getThirdPair().equals("BTCUSDT")){
+//            System.out.println(" ");
 //        }
 
         if (tradeOperation.isAllPairTrading(triangle)) {
@@ -193,6 +228,12 @@ public class ExchangeServiceImpl implements ExchangeService {
         profitInfoMap.put(PairTriangle.NUM_PAIR, profitInfo);
     }
 
+    private void fillProfitInfo(BigDecimal totalProfit, BigDecimal mainCurProfit){
+        profitInfo = new ProfitInfo();
+        profitInfo.setTotalProfit(totalProfit);
+        profitInfo.setMainCurProfit(mainCurProfit);
+    }
+
     private void fakeBalAmtInit(BigDecimal initAmt) {
         fakeBalance.setBalanceBySymbol(mainCur, multiply(initAmt, "1.2"));
         if (tradeOperation instanceof BinanceTradeOperation){
@@ -244,6 +285,10 @@ public class ExchangeServiceImpl implements ExchangeService {
         }
         logger.debug("Created " + triangles.size() + " triangles");
         return triangles;
+    }
+
+    private void vkBot(String msg){
+        new Message().from(group).to(3364333).text(msg).send();
     }
 
     @Autowired

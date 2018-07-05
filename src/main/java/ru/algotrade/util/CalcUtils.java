@@ -48,11 +48,11 @@ public class CalcUtils {
     }
 
     public static BigDecimal divide(BigDecimal value1, BigDecimal value2) {
-        return divide(value1, value2, 8);
+        return divide(value1, value2, 8, RoundingMode.DOWN);
     }
 
-    public static BigDecimal divide(BigDecimal value1, BigDecimal value2, int scale) {
-        return value1.divide(value2, scale, RoundingMode.DOWN);
+    public static BigDecimal divide(BigDecimal value1, BigDecimal value2, int scale, RoundingMode mode) {
+        return value1.divide(value2, scale, mode);
     }
 
     public static BigDecimal subtract(String value1, String value2) {

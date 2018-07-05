@@ -189,6 +189,17 @@ public class BinanceTradeOperation implements TradeOperation {
                 NO_TRADE = true;
             }
         }
+
+//        if (((triangle.getFirstPair().equals("ADAUSDT") &&
+//                triangle.getSecondPair().equals("ADABTC") &&
+//                triangle.getThirdPair().equals("BTCUSDT")) ||
+//                (triangle.getFirstPair().equals("VENUSDT") &&
+//                        triangle.getSecondPair().equals("VENBTC") &&
+//                        triangle.getThirdPair().equals("BTCUSDT"))) &&
+//                NO_TRADE == false){
+//            System.out.println(" ");
+//        }
+
         if (isValidQty(pair, normalQty)) return normalQty.toString();
         else return null;
     }
