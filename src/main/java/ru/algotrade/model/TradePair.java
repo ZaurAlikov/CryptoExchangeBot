@@ -1,6 +1,8 @@
 package ru.algotrade.model;
 
 import java.math.BigDecimal;
+import java.util.LinkedHashSet;
+import java.util.List;
 
 public class TradePair {
 
@@ -13,6 +15,7 @@ public class TradePair {
     private BigDecimal bidQty;
     private BigDecimal marketPrice;
     private TradeLimits tradeLimits;
+    private List<Candle> candles;
 
     public TradePair(String symbol, String baseAsset, String quoteAsset, BigDecimal askPrice, BigDecimal askQty, BigDecimal bidPrice, BigDecimal bidQty, BigDecimal marketPrice, TradeLimits tradeLimits) {
         this.symbol = symbol;
@@ -103,6 +106,14 @@ public class TradePair {
 
     public BigDecimal getSpread(){
         return askPrice.subtract(bidPrice);
+    }
+
+    public List<Candle> getCandles() {
+        return candles;
+    }
+
+    public void setCandles(List<Candle> candles) {
+        this.candles = candles;
     }
 
     @Override

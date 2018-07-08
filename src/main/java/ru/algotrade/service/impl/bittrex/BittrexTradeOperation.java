@@ -8,6 +8,7 @@ import de.elbatya.cryptocoins.bittrexclient.api.model.marketapi.OrderCreated;
 import de.elbatya.cryptocoins.bittrexclient.config.ApiCredentials;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ru.algotrade.enums.Interval;
 import ru.algotrade.enums.TradeType;
 import ru.algotrade.model.Fee;
 import ru.algotrade.model.PairTriangle;
@@ -33,6 +34,11 @@ public class BittrexTradeOperation implements TradeOperation {
         ApiCredentials apiCredentials = new ApiCredentials(apiKey, secretKey);
         bittrexClient = new BittrexClient(apiCredentials);
         mainFee = toBigDec("0.0025");
+    }
+
+    @Override
+    public void initTradingPairs(List<String> symbols, Interval interval, Integer limit) {
+
     }
 
     @Override

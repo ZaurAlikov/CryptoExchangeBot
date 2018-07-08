@@ -8,12 +8,15 @@ import com.binance.api.client.domain.general.ExchangeInfo;
 import com.binance.api.client.domain.general.SymbolInfo;
 import com.binance.api.client.domain.general.SymbolStatus;
 import com.binance.api.client.domain.market.BookTicker;
+import com.binance.api.client.domain.market.Candlestick;
+import com.binance.api.client.domain.market.CandlestickInterval;
 import com.binance.api.client.domain.market.TickerPrice;
 import com.binance.api.client.exception.BinanceApiException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import ru.algotrade.enums.Interval;
 import ru.algotrade.enums.TradeType;
 import ru.algotrade.mapping.TradePairBinanceMapper;
 import ru.algotrade.model.Fee;
@@ -39,6 +42,7 @@ public class BinanceTradeOperation implements TradeOperation {
     private ExchangeInfo exchangeInfo;
     private List<TickerPrice> prices;
     private List<BookTicker> tradeBooks;
+    private Map<String, List<Candlestick>> candlestickMap;
     private boolean isBNBFee;
     private BigDecimal BNBFee;
     private BigDecimal mainFee;
@@ -51,12 +55,19 @@ public class BinanceTradeOperation implements TradeOperation {
         exchangeInfo = apiRestClient.getExchangeInfo();
         prices = apiRestClient.getAllPrices();
         tradeBooks = apiRestClient.getBookTickers();
+        candlestickMap = new HashMap<>();
         isBNBFee = true;
         BNBFee = toBigDec("0.0005");
         mainFee = toBigDec("0.001");
         startRefreshingPrices();
         startRefreshingTradeBook();
         startRefreshingExchangeInfo();
+    }
+
+    @Override
+    public void initTradingPairs(List<String> symbols, Interval interval, Integer limit) {
+        CandlestickInterval candlestickInterval = intervalToCandlestickInterval(interval);
+        startRefreshingCandlesticks(symbols,candlestickInterval, limit);
     }
 
     @Override
@@ -245,7 +256,8 @@ public class BinanceTradeOperation implements TradeOperation {
         SymbolInfo symbolInfo = exchangeInfo.getSymbolInfo(pair);
         TickerPrice tickerPrice = getPrice(pair);
         BookTicker tradeBook = getTradeBook(pair);
-        return tradePairBinanceMapper.toTradePair(symbolInfo, tickerPrice, tradeBook);
+        List<Candlestick> candlesticks = getCandlestick(pair);
+        return tradePairBinanceMapper.toTradePair(symbolInfo, tickerPrice, tradeBook, candlesticks);
     }
 
     @Override
@@ -337,6 +349,61 @@ public class BinanceTradeOperation implements TradeOperation {
         return tradeBooks.stream().filter(s -> s.getSymbol().equals(pair)).findFirst().orElse(null);
     }
 
+    private List<Candlestick> getCandlestick(String symbol) {
+        List<Candlestick> candlesticks;
+        long t1 = System.currentTimeMillis();
+        long t2;
+        do {
+            candlesticks = candlestickMap.get(symbol);
+            t2 = System.currentTimeMillis();
+            if(t2 - t1 > 3000){
+                logger.debug("Problems with obtaining information on candles");
+                break;
+            }
+        } while (candlesticks == null);
+        return candlesticks;
+    }
+
+    private CandlestickInterval intervalToCandlestickInterval(Interval interval){
+        CandlestickInterval candlestickInterval = null;
+        switch (interval){
+            case ONE_MINUTE:
+                candlestickInterval = CandlestickInterval.ONE_MINUTE;
+                break;
+            case THREE_MINUTES:
+                candlestickInterval = CandlestickInterval.THREE_MINUTES;
+                break;
+            case FIVE_MINUTES:
+                candlestickInterval = CandlestickInterval.FIVE_MINUTES;
+                break;
+            case FIFTEEN_MINUTES:
+                candlestickInterval = CandlestickInterval.FIFTEEN_MINUTES;
+                break;
+            case HALF_HOURLY:
+                candlestickInterval = CandlestickInterval.HALF_HOURLY;
+                break;
+            case HOURLY:
+                candlestickInterval = CandlestickInterval.HOURLY;
+                break;
+            case FOUR_HOURLY:
+                candlestickInterval = CandlestickInterval.FOUR_HOURLY;
+                break;
+            case SIX_HOURLY:
+                candlestickInterval = CandlestickInterval.SIX_HOURLY;
+                break;
+            case EIGHT_HOURLY:
+                candlestickInterval = CandlestickInterval.EIGHT_HOURLY;
+                break;
+            case TWELVE_HOURLY:
+                candlestickInterval = CandlestickInterval.TWELVE_HOURLY;
+                break;
+            case DAILY:
+                candlestickInterval = CandlestickInterval.DAILY;
+                break;
+        }
+        return candlestickInterval;
+    }
+
     private void startRefreshingTradeBook() {
         new Thread(() -> {
             while (true) {
@@ -419,18 +486,40 @@ public class BinanceTradeOperation implements TradeOperation {
         }).start();
     }
 
-//    private void getMyTradesInNewThread(String pair, NewOrderResponse orderResponse) {
-//        new Thread(() -> {
-//            List<Trade> tradeList = apiRestClient.getMyTrades(pair, 1);
-//            if (tradeList.size() > 0) {
-//                Trade trade = tradeList.get(0);
-//                if (trade.getOrderId().equals(orderResponse.getOrderId().toString())) {
-//                    logger.debug("Buy " + pair + " paid: " + multiply(trade.getPrice(), trade.getQty()) + " buy: " +
-//                            trade.getQty() + " by price: " + trade.getPrice() + " with commission: " + trade.getCommission() + " " + trade.getCommissionAsset());
-//                } else logger.debug("Trade with such id not found");
-//            } else logger.debug("Could not retrieve trade list");
-//        }).start();
-//    }
+    private void startRefreshingCandlesticks(List<String> symbols, CandlestickInterval interval, Integer limit) {
+        new Thread(() -> {
+            while (true) {
+                int timeoutCount = 0;
+                do {
+                    try {
+                        for (String symbol : symbols){
+                            apiAsyncRestClient.getCandlestickBars(symbol, interval, limit, null, null,
+                                    (List<Candlestick> response) -> candlestickMap.put(symbol, response));
+                            try {
+                                Thread.sleep(100);
+                            } catch (InterruptedException e2) {
+                                e2.printStackTrace();
+                            }
+                        }
+                        break;
+                    } catch (BinanceApiException e) {
+                        ++timeoutCount;
+                        logger.error("Something went wrong when retrieving data from the server");
+                        try {
+                            Thread.sleep(200);
+                        } catch (InterruptedException e1) {
+                            e1.printStackTrace();
+                        }
+                    }
+                } while (timeoutCount <= 100);
+                try {
+                    Thread.sleep(60000);
+                } catch (InterruptedException e2) {
+                    e2.printStackTrace();
+                }
+            }
+        }).start();
+    }
 
     @Autowired
     public void setTradePairBinanceMapper(TradePairBinanceMapper tradePairBinanceMapper) {

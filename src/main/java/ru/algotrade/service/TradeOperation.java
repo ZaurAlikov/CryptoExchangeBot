@@ -1,5 +1,6 @@
 package ru.algotrade.service;
 
+import ru.algotrade.enums.Interval;
 import ru.algotrade.enums.TradeType;
 import ru.algotrade.model.Fee;
 import ru.algotrade.model.PairTriangle;
@@ -10,6 +11,8 @@ import java.util.List;
 import java.util.Map;
 
 public interface TradeOperation {
+
+    void initTradingPairs(List<String> symbols, Interval interval, Integer limit);
 
     BigDecimal buy(String pair, String price, String qty);
 
@@ -40,6 +43,4 @@ public interface TradeOperation {
     boolean isNoTrade();
 
     void setNoTrade(boolean noTrade);
-
-
 }

@@ -1,5 +1,6 @@
 package ru.algotrade.service.impl;
 
+import com.binance.api.client.domain.market.Candlestick;
 import com.petersamokhin.bots.sdk.clients.Group;
 import com.petersamokhin.bots.sdk.objects.Message;
 import org.slf4j.Logger;
@@ -9,7 +10,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.stereotype.Service;
 import ru.algotrade.enums.BetMode;
+import ru.algotrade.enums.Interval;
 import ru.algotrade.enums.TradeType;
+import ru.algotrade.model.Candle;
 import ru.algotrade.model.Fee;
 import ru.algotrade.model.PairTriangle;
 import ru.algotrade.model.ProfitInfo;
@@ -17,6 +20,7 @@ import ru.algotrade.service.ExchangeService;
 import ru.algotrade.service.FakeBalance;
 import ru.algotrade.service.TradeOperation;
 import ru.algotrade.service.impl.binance.BinanceTradeOperation;
+import ru.algotrade.util.MathUtils;
 
 import javax.annotation.PostConstruct;
 import java.math.BigDecimal;
@@ -64,9 +68,11 @@ public class ExchangeServiceImpl implements ExchangeService {
 
     @Override
     public void startTrade() {
-        BigDecimal[] decimal = {toBigDec("9040.49"), toBigDec("9079"),
-                toBigDec("9055"), toBigDec("9050.5"), toBigDec("9049.98"), toBigDec("9058.01")};
-        System.out.println(ema(decimal, toBigDec("8979.5"), 5));
+        List<String> symbols = Arrays.asList("BNBUSDT", "BTCUSDT");
+        tradeOperation.initTradingPairs(symbols, Interval.FIFTEEN_MINUTES, 15);
+        List<Candle> candles = tradeOperation.getTradePairInfo("BNBUSDT").getCandles();
+        BigDecimal sma = MathUtils.sma(candles, 5);
+        System.out.println(ema(candles, tradeOperation.getTradePairInfo("BNBUSDT").getAskPrice(), 5));
 
 
 //        fakeBalance.init(tradeOperation.getAllCoins());
