@@ -68,11 +68,16 @@ public class ExchangeServiceImpl implements ExchangeService {
 
     @Override
     public void startTrade() {
+        BigDecimal ema7;
+        BigDecimal ema28;
         List<String> symbols = Arrays.asList("BNBUSDT", "BTCUSDT");
-        tradeOperation.initTradingPairs(symbols, Interval.FIFTEEN_MINUTES, 15);
+        tradeOperation.initTradingPairs(symbols, Interval.FIFTEEN_MINUTES, 150);
         List<Candle> candles = tradeOperation.getTradePairInfo("BNBUSDT").getCandles();
-        BigDecimal sma = MathUtils.sma(candles, 5);
-        System.out.println(ema(candles, tradeOperation.getTradePairInfo("BNBUSDT").getAskPrice(), 5));
+        while (true){
+            ema7 = ema(candles, tradeOperation.getTradePairInfo("BNBUSDT").getMarketPrice(), 7, 4);
+            ema28 = ema(candles, tradeOperation.getTradePairInfo("BNBUSDT").getMarketPrice(), 28, 4);
+
+        }
 
 
 //        fakeBalance.init(tradeOperation.getAllCoins());

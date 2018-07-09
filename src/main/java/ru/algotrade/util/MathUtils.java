@@ -10,11 +10,21 @@ import static ru.algotrade.util.CalcUtils.*;
 
 public class MathUtils {
 
-    public static BigDecimal ema(List<Candle> values, BigDecimal curValue, Integer period) {
+    public static BigDecimal ema(List<Candle> values, BigDecimal curValue, Integer period, Integer numCandle) {
         BigDecimal ema;
         BigDecimal sma = sma(values, period);
         BigDecimal alpha = divide(toBigDec("2"), toBigDec(period + 1));
-        ema = add(multiply(alpha, curValue), multiply(subtract(toBigDec("1"), alpha), sma));
+        ema = add(multiply(alpha, values.get(period).getClose()), multiply(subtract(toBigDec("1"), alpha), sma));
+        for (int i = period + 1; i < (values.size() - 1) - numCandle; ++i) {
+            ema = add(multiply(alpha, values.get(i).getClose()), multiply(subtract(toBigDec("1"), alpha), ema));
+        }
+        if (numCandle > 0) {
+            ema = add(multiply(alpha, values.get(values.size() - (numCandle + 1)).getClose()), multiply(subtract(toBigDec("1"), alpha), ema));
+            ema = ema.setScale(4, RoundingMode.HALF_UP);
+            return ema;
+        }
+        ema = add(multiply(alpha, curValue), multiply(subtract(toBigDec("1"), alpha), ema));
+        ema = ema.setScale(4, RoundingMode.HALF_UP);
         return ema;
     }
 
@@ -26,4 +36,6 @@ public class MathUtils {
         sma = divide(sma, toBigDec(period), 4, RoundingMode.HALF_UP);
         return sma;
     }
+
+    
 }
