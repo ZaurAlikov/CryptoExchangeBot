@@ -31,15 +31,15 @@ public class AppConfig {
     }
 
     @Bean
-    @DependsOn("balanceCache")
+//    @DependsOn("balanceCache")
     TradeOperation tradeOperation(){
         return new BinanceTradeOperation(apiKey, secretKey);
     }
 
-    @Bean
-    BalanceCache balanceCache(){
-        return new BalanceCacheImpl(apiKey, secretKey);
-    }
+//    @Bean
+//    BalanceCache balanceCache(){
+//        return new BalanceCacheImpl(apiKey, secretKey);
+//    }
 
     @Bean
     TradePairBinanceMapper tradePairBinanceMapper(){

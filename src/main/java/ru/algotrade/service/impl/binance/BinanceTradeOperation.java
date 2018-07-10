@@ -526,8 +526,8 @@ public class BinanceTradeOperation implements TradeOperation {
         this.tradePairBinanceMapper = tradePairBinanceMapper;
     }
 
-    @Autowired
-    public void setBalanceCacheImpl(BalanceCacheImpl balanceCacheImpl) {
-        this.balanceCacheImpl = balanceCacheImpl;
-    }
+//    @Autowired
+//    public void setBalanceCacheImpl(BalanceCacheImpl balanceCacheImpl) {
+//        this.balanceCacheImpl = balanceCacheImpl;
+//    }
 }

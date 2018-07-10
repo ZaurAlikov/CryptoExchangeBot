@@ -28,6 +28,7 @@ import java.util.*;
 
 import static ru.algotrade.util.CalcUtils.*;
 import static ru.algotrade.util.MathUtils.ema;
+import static ru.algotrade.util.MathUtils.rsi;
 import static ru.algotrade.util.Utils.getRequiredCurrency;
 import static ru.algotrade.util.Utils.isBaseCurrency;
 
@@ -49,12 +50,12 @@ public class ExchangeServiceImpl implements ExchangeService {
     private FakeBalance fakeBalance;
     private ProfitInfo profitInfo;
     private Group group;
-    private Map <Integer, ProfitInfo> profitInfoMap;
+    private Map<Integer, ProfitInfo> profitInfoMap;
     private Logger logger = LoggerFactory.getLogger(ExchangeServiceImpl.class);
 
     @PostConstruct
-    private void init(){
-        group = new Group(40542602, vkToken);
+    private void init() {
+//        group = new Group(40542602, vkToken);
     }
 
     public ExchangeServiceImpl() {
@@ -68,14 +69,25 @@ public class ExchangeServiceImpl implements ExchangeService {
 
     @Override
     public void startTrade() {
+        BigDecimal rsi_max = new BigDecimal("60");
+        BigDecimal rsi_min = new BigDecimal("40");
         BigDecimal ema7;
         BigDecimal ema28;
+        BigDecimal rsi = null;
         List<String> symbols = Arrays.asList("BNBUSDT", "BTCUSDT");
-        tradeOperation.initTradingPairs(symbols, Interval.FIFTEEN_MINUTES, 150);
-        List<Candle> candles = tradeOperation.getTradePairInfo("BNBUSDT").getCandles();
-        while (true){
+        tradeOperation.initTradingPairs(symbols, Interval.FIFTEEN_MINUTES, 200);
+        List<Candle> candles;
+        while (true) {
+            candles = tradeOperation.getTradePairInfo("BNBUSDT").getCandles();
             ema7 = ema(candles, tradeOperation.getTradePairInfo("BNBUSDT").getMarketPrice(), 7, 4);
             ema28 = ema(candles, tradeOperation.getTradePairInfo("BNBUSDT").getMarketPrice(), 28, 4);
+            try {
+                rsi = rsi(candles, tradeOperation.getTradePairInfo("BNBUSDT").getMarketPrice(), 7);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+
 
         }
 
@@ -125,7 +137,7 @@ public class ExchangeServiceImpl implements ExchangeService {
         BigDecimal profit = subtract(divide(multiply(afterBal, toBigDec("100")), beforeBal), toBigDec("100"));
         fillProfitInfo(totalProfit, profit);
         boolean result = totalProfit.compareTo(bound) >= 0;
-        if (result){
+        if (result) {
             logger.debug("Profit in USDT: " + subtract(afterBal, beforeBal).toString() + " " + mainCur + " (" + profit + "%) " + triangle);
             logger.debug("Total profit: " + subtract(afterTotalBal, beforeTotalBal).toString() + " " + mainCur + " (" + totalProfit + "%) " + triangle);
         }
@@ -219,13 +231,12 @@ public class ExchangeServiceImpl implements ExchangeService {
     }
 
     private BigDecimal initBet() {
-        if (betMode == BetMode.CONSTANT){
+        if (betMode == BetMode.CONSTANT) {
             return constBet;
-        } else if (betMode == BetMode.PERCENT){
-            if (percentAmt.compareTo(toBigDec("1")) <= 0){
+        } else if (betMode == BetMode.PERCENT) {
+            if (percentAmt.compareTo(toBigDec("1")) <= 0) {
                 return multiply(tradeOperation.getBalance(mainCur), percentAmt);
-            }
-            else logger.error("The bid can not be more than 100%");
+            } else logger.error("The bid can not be more than 100%");
         }
         return BigDecimal.ZERO;
     }
@@ -239,7 +250,7 @@ public class ExchangeServiceImpl implements ExchangeService {
         profitInfoMap.put(PairTriangle.NUM_PAIR, profitInfo);
     }
 
-    private void fillProfitInfo(BigDecimal totalProfit, BigDecimal mainCurProfit){
+    private void fillProfitInfo(BigDecimal totalProfit, BigDecimal mainCurProfit) {
         profitInfo = new ProfitInfo();
         profitInfo.setTotalProfit(totalProfit);
         profitInfo.setMainCurProfit(mainCurProfit);
@@ -247,7 +258,7 @@ public class ExchangeServiceImpl implements ExchangeService {
 
     private void fakeBalAmtInit(BigDecimal initAmt) {
         fakeBalance.setBalanceBySymbol(mainCur, multiply(initAmt, "1.2"));
-        if (tradeOperation instanceof BinanceTradeOperation){
+        if (tradeOperation instanceof BinanceTradeOperation) {
             fakeBalance.setBalanceBySymbol("BNB", new BigDecimal("0.5"));
         }
     }
@@ -298,7 +309,7 @@ public class ExchangeServiceImpl implements ExchangeService {
         return triangles;
     }
 
-    private void vkBot(String msg){
+    private void vkBot(String msg) {
         new Message().from(group).to(3364333).text(msg).send();
     }
 

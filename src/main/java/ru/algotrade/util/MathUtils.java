@@ -10,16 +10,16 @@ import static ru.algotrade.util.CalcUtils.*;
 
 public class MathUtils {
 
-    public static BigDecimal ema(List<Candle> values, BigDecimal curValue, Integer period, Integer numCandle) {
+    public static BigDecimal ema(List<Candle> candles, BigDecimal curValue, Integer period, Integer numCandle) {
         BigDecimal ema;
-        BigDecimal sma = sma(values, period);
+        BigDecimal sma = sma(candles, period);
         BigDecimal alpha = divide(toBigDec("2"), toBigDec(period + 1));
-        ema = add(multiply(alpha, values.get(period).getClose()), multiply(subtract(toBigDec("1"), alpha), sma));
-        for (int i = period + 1; i < (values.size() - 1) - numCandle; ++i) {
-            ema = add(multiply(alpha, values.get(i).getClose()), multiply(subtract(toBigDec("1"), alpha), ema));
+        ema = add(multiply(alpha, candles.get(period).getClose()), multiply(subtract(toBigDec("1"), alpha), sma));
+        for (int i = period + 1; i < (candles.size() - 1) - numCandle; ++i) {
+            ema = add(multiply(alpha, candles.get(i).getClose()), multiply(subtract(toBigDec("1"), alpha), ema));
         }
         if (numCandle > 0) {
-            ema = add(multiply(alpha, values.get(values.size() - (numCandle + 1)).getClose()), multiply(subtract(toBigDec("1"), alpha), ema));
+            ema = add(multiply(alpha, candles.get(candles.size() - (numCandle + 1)).getClose()), multiply(subtract(toBigDec("1"), alpha), ema));
             ema = ema.setScale(4, RoundingMode.HALF_UP);
             return ema;
         }
@@ -28,14 +28,58 @@ public class MathUtils {
         return ema;
     }
 
-    public static BigDecimal sma(List<Candle> values, Integer period) {
+    public static BigDecimal sma(List<Candle> candles, Integer period) {
         BigDecimal sma = BigDecimal.ZERO;
         for (int i = 0; i < period; ++i) {
-            sma = add(sma, values.get(i).getClose());
+            sma = add(sma, candles.get(i).getClose());
         }
         sma = divide(sma, toBigDec(period), 4, RoundingMode.HALF_UP);
         return sma;
     }
 
-    
+    public static BigDecimal rsi(List<Candle> candles, BigDecimal curValue, Integer period) throws Exception {
+        BigDecimal rsi;
+        int lastBar = candles.size() - 1;
+        if (candles.size() < (period + 1)) {
+            String msg = "Quote history length " + candles.size() + " is insufficient to calculate the indicator.";
+            throw new Exception(msg);
+        }
+        BigDecimal avgGain = BigDecimal.ZERO;
+        BigDecimal avgLoss = BigDecimal.ZERO;
+        for (int bar = 1; bar <= period; bar++) {
+            BigDecimal change;
+            if (bar == lastBar) {
+                change = subtract(curValue, candles.get(bar - 1).getClose());
+            } else {
+                change = subtract(candles.get(bar).getClose(), candles.get(bar - 1).getClose());
+            }
+            if (change.compareTo(toBigDec("0")) >= 0) {
+                avgGain = add(avgGain, change);
+            } else {
+                avgLoss = add(avgLoss, change);
+            }
+        }
+        avgLoss = toBigDec(Math.abs(avgLoss.doubleValue()));
+        avgGain = divide(avgGain, toBigDec(period));
+        avgLoss = divide(avgLoss, toBigDec(period));
+        for (int bar = period + 1; bar <= lastBar; bar++) {
+            BigDecimal change;
+            if (bar == lastBar) {
+                change = subtract(curValue, candles.get(bar - 1).getClose());
+            } else {
+                change = subtract(candles.get(bar).getClose(), candles.get(bar - 1).getClose());
+            }
+            if (change.compareTo(toBigDec("0")) >= 0) {
+                avgGain = divide(add(multiply(avgGain, toBigDec(period - 1)), change), toBigDec(period));
+                avgLoss = divide(add(multiply(avgLoss, toBigDec(period - 1)), toBigDec("0")), toBigDec(period));
+            } else {
+                Double absChange = Math.abs(change.doubleValue());
+                avgLoss = divide(add(multiply(avgLoss, toBigDec(period - 1)), toBigDec(absChange)), toBigDec(period));
+                avgGain = divide(add(multiply(avgGain, toBigDec(period - 1)), toBigDec("0")), toBigDec(period));
+            }
+        }
+        BigDecimal rs = divide(avgGain, avgLoss);
+        rsi = subtract(toBigDec("100"), divide(toBigDec("100"), add(toBigDec("1"), rs))).setScale(4, RoundingMode.HALF_UP);
+        return rsi;
+    }
 }
