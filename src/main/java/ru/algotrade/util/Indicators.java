@@ -1,14 +1,19 @@
 package ru.algotrade.util;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ru.algotrade.model.Candle;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.ArrayList;
 import java.util.List;
 
 import static ru.algotrade.util.CalcUtils.*;
 
-public class MathUtils {
+public class Indicators {
+
+    private static Logger logger = LoggerFactory.getLogger(Indicators.class);
 
     public static BigDecimal ema(List<Candle> candles, BigDecimal curValue, Integer period, Integer numCandle) {
         BigDecimal ema;
@@ -28,6 +33,14 @@ public class MathUtils {
         return ema;
     }
 
+    public static List<BigDecimal> ema(List<Candle> candles, BigDecimal curValue, Integer period, Integer numCandle, Integer count){
+        List<BigDecimal> emaList = new ArrayList<>();
+        for(int i = 0; i < count; i++){
+            emaList.add(ema(candles, curValue, period, i));
+        }
+        return emaList;
+    }
+
     public static BigDecimal sma(List<Candle> candles, Integer period) {
         BigDecimal sma = BigDecimal.ZERO;
         for (int i = 0; i < period; ++i) {
@@ -37,12 +50,13 @@ public class MathUtils {
         return sma;
     }
 
-    public static BigDecimal rsi(List<Candle> candles, BigDecimal curValue, Integer period) throws Exception {
+    public static BigDecimal rsi(List<Candle> candles, BigDecimal curValue, Integer period, Integer numCandle) {
         BigDecimal rsi;
         int lastBar = candles.size() - 1;
         if (candles.size() < (period + 1)) {
             String msg = "Quote history length " + candles.size() + " is insufficient to calculate the indicator.";
-            throw new Exception(msg);
+            logger.debug(msg);
+            return BigDecimal.ZERO;
         }
         BigDecimal avgGain = BigDecimal.ZERO;
         BigDecimal avgLoss = BigDecimal.ZERO;
@@ -77,9 +91,28 @@ public class MathUtils {
                 avgLoss = divide(add(multiply(avgLoss, toBigDec(period - 1)), toBigDec(absChange)), toBigDec(period));
                 avgGain = divide(add(multiply(avgGain, toBigDec(period - 1)), toBigDec("0")), toBigDec(period));
             }
+            if(bar == (lastBar - numCandle)){
+                break;
+            }
         }
         BigDecimal rs = divide(avgGain, avgLoss);
         rsi = subtract(toBigDec("100"), divide(toBigDec("100"), add(toBigDec("1"), rs))).setScale(4, RoundingMode.HALF_UP);
         return rsi;
+    }
+
+    public static List<BigDecimal> rsi(List<Candle> candles, BigDecimal curValue, Integer period, Integer numCandle, Integer count) {
+        List<BigDecimal> rsiList = new ArrayList<>();
+        for(int i = 0; i < count; i++){
+            rsiList.add(rsi(candles, curValue, period, i));
+        }
+        return rsiList;
+    }
+
+    public static boolean downUpCrossing(BigDecimal oldValue1, BigDecimal newValue1, BigDecimal oldValue2, BigDecimal newValue2){
+        boolean result = false;
+        if (oldValue1.compareTo(oldValue2) < 0 && newValue1.compareTo(newValue2) >= 0){
+            result =true;
+        }
+        return result;
     }
 }

@@ -1,6 +1,5 @@
 package ru.algotrade.service.impl;
 
-import com.binance.api.client.domain.market.Candlestick;
 import com.petersamokhin.bots.sdk.clients.Group;
 import com.petersamokhin.bots.sdk.objects.Message;
 import org.slf4j.Logger;
@@ -20,15 +19,13 @@ import ru.algotrade.service.ExchangeService;
 import ru.algotrade.service.FakeBalance;
 import ru.algotrade.service.TradeOperation;
 import ru.algotrade.service.impl.binance.BinanceTradeOperation;
-import ru.algotrade.util.MathUtils;
 
 import javax.annotation.PostConstruct;
 import java.math.BigDecimal;
 import java.util.*;
 
 import static ru.algotrade.util.CalcUtils.*;
-import static ru.algotrade.util.MathUtils.ema;
-import static ru.algotrade.util.MathUtils.rsi;
+import static ru.algotrade.util.Indicators.*;
 import static ru.algotrade.util.Utils.getRequiredCurrency;
 import static ru.algotrade.util.Utils.isBaseCurrency;
 
@@ -69,26 +66,28 @@ public class ExchangeServiceImpl implements ExchangeService {
 
     @Override
     public void startTrade() {
-        BigDecimal rsi_max = new BigDecimal("60");
-        BigDecimal rsi_min = new BigDecimal("40");
-        BigDecimal ema7;
-        BigDecimal ema28;
-        BigDecimal rsi = null;
+        int rsi_max = 60;
+        int rsi_min = 40;
+        List<BigDecimal> ema7;
+        BigDecimal oldEma7 = new BigDecimal("100");
+        List<BigDecimal> ema28;
+        BigDecimal oldEma28 = new BigDecimal("0");
+        List<BigDecimal> rsi;
         List<String> symbols = Arrays.asList("BNBUSDT", "BTCUSDT");
         tradeOperation.initTradingPairs(symbols, Interval.FIFTEEN_MINUTES, 200);
         List<Candle> candles;
         while (true) {
             candles = tradeOperation.getTradePairInfo("BNBUSDT").getCandles();
-            ema7 = ema(candles, tradeOperation.getTradePairInfo("BNBUSDT").getMarketPrice(), 7, 4);
-            ema28 = ema(candles, tradeOperation.getTradePairInfo("BNBUSDT").getMarketPrice(), 28, 4);
-            try {
-                rsi = rsi(candles, tradeOperation.getTradePairInfo("BNBUSDT").getMarketPrice(), 7);
-            } catch (Exception e) {
-                e.printStackTrace();
+            BigDecimal lastPrice = tradeOperation.getTradePairInfo("BNBUSDT").getMarketPrice();
+            ema7 = ema(candles, lastPrice, 7, null, 5);
+            ema28 = ema(candles, lastPrice, 28, null,5);
+//            rsi = rsi(candles, lastPrice, 7, null, 5);
+            boolean crossSignal = downUpCrossing(oldEma7, ema7.get(0), oldEma28, ema28.get(0));
+            oldEma7 = ema7.get(0);
+            oldEma28 = ema28.get(0);
+            if(crossSignal){
+                System.out.println(new Date() + " crossing");
             }
-
-
-
         }
 
 
