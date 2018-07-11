@@ -23,6 +23,7 @@ import ru.algotrade.util.Signals;
 
 import javax.annotation.PostConstruct;
 import java.math.BigDecimal;
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 import static ru.algotrade.util.CalcUtils.*;
@@ -69,48 +70,17 @@ public class ExchangeServiceImpl implements ExchangeService {
 
     @Override
     public void startTrade() {
-        BigDecimal initAmt = initBet();
-        BigDecimal reqProfit = toBigDec("0.01");
-        boolean order = false;
-        int rsiMax = 60;
-        int rsiMin = 40;
-        List<BigDecimal> ema7;
-        BigDecimal oldEma7 = new BigDecimal("100");
-        List<BigDecimal> ema28;
-        BigDecimal oldEma28 = new BigDecimal("0");
-        List<BigDecimal> rsi;
-        boolean rsiSignal = false;
-        boolean crossSignal = false;
-        BigDecimal lastPrice;
-        BigDecimal buyPrice = BigDecimal.ZERO;
-        List<String> symbols = Arrays.asList("BNBUSDT", "BTCUSDT");
+        List<String> symbols = Arrays.asList("BTCUSDT", "EOSUSDT", "ETHUSDT", "NEOUSDT", "BNBUSDT", "TRXUSDT", "ETCUSDT", "ONTUSDT", "LTCUSDT", "ADAUSDT", "BCCUSDT", "XRPUSDT", "IOTAUSDT", "ICXUSDT", "XLMUSDT", "VENUSDT", "QTUMUSDT");
         tradeOperation.initTradingPairs(symbols, Interval.FIFTEEN_MINUTES, 200);
-        List<Candle> candles;
-        while (true) {
-            lastPrice = tradeOperation.getTradePairInfo("BNBUSDT").getMarketPrice();
-            if (!order){
-                candles = tradeOperation.getTradePairInfo("BNBUSDT").getCandles();
-                ema7 = ema(candles, lastPrice, 7, null, 5);
-                ema28 = ema(candles, lastPrice, 28, null, 5);
-                rsi = rsi(candles, lastPrice, 7, null, 6);
-                crossSignal = downUpCrossing(oldEma7, ema7, oldEma28, ema28);
-                oldEma7 = ema7.get(0);
-                oldEma28 = ema28.get(0);
-                rsiSignal = rsiSignal(rsi, rsiMin, rsiMax);
-            }
-            if (crossSignal && rsiSignal && !order) {
-                order = true;
-                buyPrice = lastPrice;
-                System.out.println(new Date() + " buy at a price: " +  buyPrice);
-            }
-            if (lastPrice.compareTo(multiply(buyPrice, add(reqProfit, toBigDec("1")))) >= 0){
-                order = false;
-                System.out.println(new Date() + " sell at a price: " +  lastPrice);
-            } else if(lastPrice.compareTo(multiply(buyPrice, add(reqProfit, toBigDec("1")))) <= 0) {
-
-            }
-
+        try {
+            Thread.sleep(30000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         }
+        for (String symbol : symbols){
+            trade(symbol);
+        }
+
 
 
 //        fakeBalance.init(tradeOperation.getAllCoins());
@@ -145,6 +115,64 @@ public class ExchangeServiceImpl implements ExchangeService {
 //            }
 //        }
     }
+
+    public void trade(String symbol){
+        new Thread(() -> {
+            BigDecimal initAmt = initBet();
+            BigDecimal reqProfit = toBigDec("0.01");
+            boolean order = false;
+            int rsiMax = 60;
+            int rsiMin = 40;
+            List<BigDecimal> ema7;
+            BigDecimal oldEma7 = new BigDecimal("100");
+            List<BigDecimal> ema28;
+            BigDecimal oldEma28 = new BigDecimal("0");
+            List<BigDecimal> rsi;
+            boolean rsiSignal = false;
+            boolean crossSignal = false;
+            BigDecimal lastPrice;
+            BigDecimal buyPrice = BigDecimal.ZERO;
+            List<Candle> candles;
+            while (true) {
+                lastPrice = tradeOperation.getTradePairInfo(symbol).getMarketPrice();
+                if (!order){
+                    candles = tradeOperation.getTradePairInfo(symbol).getCandles();
+                    ema7 = ema(candles, lastPrice, 7, null, 5);
+                    ema28 = ema(candles, lastPrice, 28, null, 5);
+                    rsi = rsi(candles, lastPrice, 7, null, 6);
+                    crossSignal = downUpCrossing(oldEma7, ema7, oldEma28, ema28);
+                    oldEma7 = ema7.get(0);
+                    oldEma28 = ema28.get(0);
+                    rsiSignal = rsiSignal(rsi, rsiMin, rsiMax);
+
+//                    String pattern = "dd.MM.yyyy hh:mm:ss";
+//                    SimpleDateFormat simpleDateFormat = new SimpleDateFormat(pattern);
+//                    String date = simpleDateFormat.format(new Date());
+//                    System.out.println(Thread.currentThread().getName() + ", " + symbol + ", " + date + ", " + lastPrice + ", " + ema7.get(0) + ", " + ema28.get(0) + ", " + rsi.get(0));
+
+                }
+                if (crossSignal && rsiSignal && !order) {
+                    order = true;
+                    buyPrice = lastPrice;
+                    System.out.println(new Date() + " buy at a price: " +  buyPrice);
+                }
+                if (order && lastPrice.compareTo(multiply(buyPrice, add(reqProfit, toBigDec("1")))) >= 0){
+                    order = false;
+                    System.out.println(new Date() + " sell at a price: " +  lastPrice + " 0.9% profit");
+                }
+                if(order && lastPrice.compareTo(subtract(lastPrice, multiply(buyPrice, reqProfit))) <= 0) {
+                    order = false;
+                    System.out.println(new Date() + " sell at a price: " +  lastPrice + " -1.1% profit");
+                }
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        }).start();
+    }
+
 
     @Override
     public boolean isProfit(PairTriangle triangle, BigDecimal initAmt, BigDecimal bound) {
