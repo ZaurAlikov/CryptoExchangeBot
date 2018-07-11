@@ -33,9 +33,9 @@ public class Indicators {
         return ema;
     }
 
-    public static List<BigDecimal> ema(List<Candle> candles, BigDecimal curValue, Integer period, Integer numCandle, Integer count){
+    public static List<BigDecimal> ema(List<Candle> candles, BigDecimal curValue, Integer period, Integer numCandle, Integer count) {
         List<BigDecimal> emaList = new ArrayList<>();
-        for(int i = 0; i < count; i++){
+        for (int i = 0; i < count; i++) {
             emaList.add(ema(candles, curValue, period, i));
         }
         return emaList;
@@ -91,7 +91,7 @@ public class Indicators {
                 avgLoss = divide(add(multiply(avgLoss, toBigDec(period - 1)), toBigDec(absChange)), toBigDec(period));
                 avgGain = divide(add(multiply(avgGain, toBigDec(period - 1)), toBigDec("0")), toBigDec(period));
             }
-            if(bar == (lastBar - numCandle)){
+            if (bar == (lastBar - numCandle)) {
                 break;
             }
         }
@@ -102,17 +102,9 @@ public class Indicators {
 
     public static List<BigDecimal> rsi(List<Candle> candles, BigDecimal curValue, Integer period, Integer numCandle, Integer count) {
         List<BigDecimal> rsiList = new ArrayList<>();
-        for(int i = 0; i < count; i++){
+        for (int i = 0; i < count; i++) {
             rsiList.add(rsi(candles, curValue, period, i));
         }
         return rsiList;
-    }
-
-    public static boolean downUpCrossing(BigDecimal oldValue1, BigDecimal newValue1, BigDecimal oldValue2, BigDecimal newValue2){
-        boolean result = false;
-        if (oldValue1.compareTo(oldValue2) < 0 && newValue1.compareTo(newValue2) >= 0){
-            result =true;
-        }
-        return result;
     }
 }

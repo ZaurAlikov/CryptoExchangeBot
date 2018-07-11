@@ -19,6 +19,7 @@ import ru.algotrade.service.ExchangeService;
 import ru.algotrade.service.FakeBalance;
 import ru.algotrade.service.TradeOperation;
 import ru.algotrade.service.impl.binance.BinanceTradeOperation;
+import ru.algotrade.util.Signals;
 
 import javax.annotation.PostConstruct;
 import java.math.BigDecimal;
@@ -26,6 +27,8 @@ import java.util.*;
 
 import static ru.algotrade.util.CalcUtils.*;
 import static ru.algotrade.util.Indicators.*;
+import static ru.algotrade.util.Signals.downUpCrossing;
+import static ru.algotrade.util.Signals.rsiSignal;
 import static ru.algotrade.util.Utils.getRequiredCurrency;
 import static ru.algotrade.util.Utils.isBaseCurrency;
 
@@ -66,28 +69,47 @@ public class ExchangeServiceImpl implements ExchangeService {
 
     @Override
     public void startTrade() {
-        int rsi_max = 60;
-        int rsi_min = 40;
+        BigDecimal initAmt = initBet();
+        BigDecimal reqProfit = toBigDec("0.01");
+        boolean order = false;
+        int rsiMax = 60;
+        int rsiMin = 40;
         List<BigDecimal> ema7;
         BigDecimal oldEma7 = new BigDecimal("100");
         List<BigDecimal> ema28;
         BigDecimal oldEma28 = new BigDecimal("0");
         List<BigDecimal> rsi;
+        boolean rsiSignal = false;
+        boolean crossSignal = false;
+        BigDecimal lastPrice;
+        BigDecimal buyPrice = BigDecimal.ZERO;
         List<String> symbols = Arrays.asList("BNBUSDT", "BTCUSDT");
         tradeOperation.initTradingPairs(symbols, Interval.FIFTEEN_MINUTES, 200);
         List<Candle> candles;
         while (true) {
-            candles = tradeOperation.getTradePairInfo("BNBUSDT").getCandles();
-            BigDecimal lastPrice = tradeOperation.getTradePairInfo("BNBUSDT").getMarketPrice();
-            ema7 = ema(candles, lastPrice, 7, null, 5);
-            ema28 = ema(candles, lastPrice, 28, null,5);
-//            rsi = rsi(candles, lastPrice, 7, null, 5);
-            boolean crossSignal = downUpCrossing(oldEma7, ema7.get(0), oldEma28, ema28.get(0));
-            oldEma7 = ema7.get(0);
-            oldEma28 = ema28.get(0);
-            if(crossSignal){
-                System.out.println(new Date() + " crossing");
+            lastPrice = tradeOperation.getTradePairInfo("BNBUSDT").getMarketPrice();
+            if (!order){
+                candles = tradeOperation.getTradePairInfo("BNBUSDT").getCandles();
+                ema7 = ema(candles, lastPrice, 7, null, 5);
+                ema28 = ema(candles, lastPrice, 28, null, 5);
+                rsi = rsi(candles, lastPrice, 7, null, 6);
+                crossSignal = downUpCrossing(oldEma7, ema7, oldEma28, ema28);
+                oldEma7 = ema7.get(0);
+                oldEma28 = ema28.get(0);
+                rsiSignal = rsiSignal(rsi, rsiMin, rsiMax);
             }
+            if (crossSignal && rsiSignal && !order) {
+                order = true;
+                buyPrice = lastPrice;
+                System.out.println(new Date() + " buy at a price: " +  buyPrice);
+            }
+            if (lastPrice.compareTo(multiply(buyPrice, add(reqProfit, toBigDec("1")))) >= 0){
+                order = false;
+                System.out.println(new Date() + " sell at a price: " +  lastPrice);
+            } else if(lastPrice.compareTo(multiply(buyPrice, add(reqProfit, toBigDec("1")))) <= 0) {
+
+            }
+
         }
 
 
