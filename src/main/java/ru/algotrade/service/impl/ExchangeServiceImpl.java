@@ -121,7 +121,9 @@ public class ExchangeServiceImpl implements ExchangeService {
     public void trade(String symbol){
         new Thread(() -> {
             BigDecimal initAmt = initBet();
-            BigDecimal reqProfit = toBigDec("0.01");
+            BigDecimal gain = toBigDec("0.011");
+            BigDecimal loss = toBigDec("0.019");
+
             boolean order = false;
             int rsiMax = 60;
             int rsiMin = 40;
@@ -154,7 +156,7 @@ public class ExchangeServiceImpl implements ExchangeService {
 
                 }
 
-                String pattern = "dd.MM.yyyy hh:mm:ss";
+                String pattern = "dd.MM.yyyy HH:mm:ss";
                 SimpleDateFormat simpleDateFormat = new SimpleDateFormat(pattern);
                 String date = simpleDateFormat.format(new Date());
 
@@ -163,13 +165,13 @@ public class ExchangeServiceImpl implements ExchangeService {
                     buyPrice = lastPrice;
                     System.out.println(symbol + ", " + date + ", " + "buy at a price: " +  buyPrice);
                 }
-                if (order && lastPrice.compareTo(multiply(buyPrice, add(reqProfit, toBigDec("1")))) >= 0){
+                if (order && lastPrice.compareTo(multiply(buyPrice, add(gain, toBigDec("1")))) >= 0){
                     order = false;
-                    System.out.println(symbol + ", " + date + ", " + "sell at a price: " +  lastPrice + " 0.9% profit");
+                    System.out.println(symbol + ", " + date + ", " + "sell at a price: " +  lastPrice + " 1% profit");
                 }
-                if(order && lastPrice.compareTo(subtract(lastPrice, multiply(buyPrice, reqProfit))) <= 0) {
+                if(order && lastPrice.compareTo(subtract(buyPrice, multiply(buyPrice, loss))) <= 0) {
                     order = false;
-                    System.out.println(symbol + ", " + date + ", " + "sell at a price: " +  lastPrice + " -1.1% profit");
+                    System.out.println(symbol + ", " + date + ", " + "sell at a price: " +  lastPrice + " -2% profit");
                 }
                 try {
                     Thread.sleep(1000);
