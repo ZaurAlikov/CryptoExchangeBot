@@ -22,6 +22,8 @@ import ru.algotrade.service.impl.binance.BinanceTradeOperation;
 import ru.algotrade.util.Signals;
 
 import javax.annotation.PostConstruct;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -153,6 +155,9 @@ public class ExchangeServiceImpl implements ExchangeService {
 //                    SimpleDateFormat simpleDateFormat = new SimpleDateFormat(pattern);
 //                    String date = simpleDateFormat.format(new Date());
 //                    System.out.println(Thread.currentThread().getName() + ", " + symbol + ", " + date + ", " + lastPrice + ", " + ema7.get(0) + ", " + ema28.get(0) + ", " + rsi.get(0));
+//                    fileWriter(Thread.currentThread().getName() + ", " + symbol + ", " + date + ", " + lastPrice + ", " + ema7.get(0) + ", " + ema28.get(0) + ", " + rsi.get(0) + "\n");
+
+
 
                 }
 
@@ -163,14 +168,17 @@ public class ExchangeServiceImpl implements ExchangeService {
                 if (crossSignal && rsiSignal && !order) {
                     order = true;
                     buyPrice = lastPrice;
+                    fileWriter(symbol + ", " + date + ", " + "buy at a price: " +  buyPrice + "\r\n");
                     System.out.println(symbol + ", " + date + ", " + "buy at a price: " +  buyPrice);
                 }
                 if (order && lastPrice.compareTo(multiply(buyPrice, add(gain, toBigDec("1")))) >= 0){
                     order = false;
+                    fileWriter(symbol + ", " + date + ", " + "sell at a price: " +  lastPrice + " 1% profit" + "\r\n");
                     System.out.println(symbol + ", " + date + ", " + "sell at a price: " +  lastPrice + " 1% profit");
                 }
                 if(order && lastPrice.compareTo(subtract(buyPrice, multiply(buyPrice, loss))) <= 0) {
                     order = false;
+                    fileWriter(symbol + ", " + date + ", " + "sell at a price: " +  lastPrice + " -2% profit" + "\r\n");
                     System.out.println(symbol + ", " + date + ", " + "sell at a price: " +  lastPrice + " -2% profit");
                 }
                 try {
@@ -180,6 +188,16 @@ public class ExchangeServiceImpl implements ExchangeService {
                 }
             }
         }).start();
+    }
+
+    private void fileWriter(String text) {
+        try(FileWriter writer = new FileWriter("log.txt", true))
+        {
+            writer.write(text);
+            writer.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
 
